@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Work Planner</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <header>
+    <h1>📋 Work Planner</h1>
+    <nav>
+      <button class="nav-btn active" data-tab="dashboard">대시보드</button>
+      <button class="nav-btn" data-tab="tasks">업무 목록</button>
+      <button class="nav-btn" data-tab="completed">완료 목록</button>
+      <button class="nav-btn" data-tab="categories">업무 종류</button>
+      <button class="nav-btn" data-tab="template-manage">템플릿 관리</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- 대시보드 탭 -->
+    <section id="tab-dashboard" class="tab-content active">
+      <div class="summary-bar" id="summary-bar">
+        <div class="summary-item"><span class="summary-label">오늘 할 일</span><span class="summary-value" id="sum-today">-</span></div>
+        <div class="summary-item overdue"><span class="summary-label">기한 초과</span><span class="summary-value" id="sum-overdue">-</span></div>
+        <div class="summary-item"><span class="summary-label">진행중</span><span class="summary-value" id="sum-inprogress">-</span></div>
+      </div>
+
+      <div class="section-header">
+        <h2>빠른 업무 추가 (템플릿)</h2>
+        <button class="btn-sm" id="btn-new-task-dash">+ 새 업무</button>
+      </div>
+      <div id="template-buttons" class="template-grid">
+        <p class="empty-note">템플릿이 없습니다. "템플릿 관리" 탭에서 추가하세요.</p>
+      </div>
+
+      <div class="section-header" style="margin-top:1.5rem">
+        <h2>미완료 업무</h2>
+        <div class="filter-row">
+          <select id="filter-period">
+            <option value="">전체</option>
+            <option value="today">오늘</option>
+            <option value="week">이번 주</option>
+          </select>
+          <select id="filter-category">
+            <option value="">전체 종류</option>
+          </select>
+          <input type="text" id="filter-clinic" placeholder="치과 검색" />
+        </div>
+      </div>
+      <div id="task-list" class="task-list"></div>
+    </section>
+
+    <!-- 업무 목록 탭 (전체) -->
+    <section id="tab-tasks" class="tab-content">
+      <div class="section-header">
+        <h2>전체 업무</h2>
+        <button class="btn-sm" id="btn-new-task">+ 새 업무</button>
+      </div>
+      <div id="all-task-list" class="task-list"></div>
+    </section>
+
+    <!-- 완료 목록 탭 -->
+    <section id="tab-completed" class="tab-content">
+      <div class="section-header"><h2>완료된 업무</h2></div>
+      <div id="completed-task-list" class="task-list"></div>
+    </section>
+
+    <!-- 업무 종류 탭 -->
+    <section id="tab-categories" class="tab-content">
+      <div class="section-header">
+        <h2>업무 종류 관리</h2>
+        <button class="btn-sm" id="btn-new-cat">+ 추가</button>
+      </div>
+      <div id="cat-form" class="inline-form hidden">
+        <input type="text" id="cat-input" placeholder="업무 종류 이름" />
+        <button id="cat-save">저장</button>
+        <button id="cat-cancel" class="btn-secondary">취소</button>
+      </div>
+      <ul id="category-list" class="item-list"></ul>
+    </section>
+
+    <!-- 템플릿 관리 탭 -->
+    <section id="tab-template-manage" class="tab-content">
+      <div class="section-header">
+        <h2>반복 업무 템플릿</h2>
+        <button class="btn-sm" id="btn-new-tmpl">+ 템플릿 추가</button>
+      </div>
+      <ul id="template-list" class="item-list"></ul>
+    </section>
+  </main>
+
+  <!-- 업무 추가/수정 모달 -->
+  <div id="task-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="modal-title">업무 추가</h3>
+      <form id="task-form">
+        <input type="hidden" id="task-id" />
+        <div class="form-group">
+          <label>제목 *</label>
+          <input type="text" id="f-title" required />
+        </div>
+        <div class="form-group">
+          <label>업무 종류</label>
+          <select id="f-category">
+            <option value="">선택 안 함</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>관련 치과</label>
+          <input type="text" id="f-clinic" placeholder="선택 사항" />
+        </div>
+        <div class="form-group">
+          <label>우선순위 (1~5, 5=최고)</label>
+          <select id="f-priority">
+            <option value="5">5 - 최고</option>
+            <option value="4">4 - 높음</option>
+            <option value="3" selected>3 - 보통</option>
+            <option value="2">2 - 낮음</option>
+            <option value="1">1 - 최저</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>마감일</label>
+          <input type="date" id="f-due-date" />
+        </div>
+        <div class="form-group">
+          <label>상태</label>
+          <select id="f-status">
+            <option value="대기">대기</option>
+            <option value="진행중">진행중</option>
+            <option value="완료">완료</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>메모</label>
+          <textarea id="f-memo" rows="3"></textarea>
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">저장</button>
+          <button type="button" id="modal-cancel" class="btn-secondary">취소</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- 템플릿 추가/수정 모달 -->
+  <div id="tmpl-modal" class="modal hidden">
+    <div class="modal-content">
+      <h3 id="tmpl-modal-title">템플릿 추가</h3>
+      <form id="tmpl-form">
+        <input type="hidden" id="tmpl-id" />
+        <div class="form-group">
+          <label>제목 *</label>
+          <input type="text" id="tf-title" required />
+        </div>
+        <div class="form-group">
+          <label>업무 종류</label>
+          <select id="tf-category">
+            <option value="">선택 안 함</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>기본 우선순위</label>
+          <select id="tf-priority">
+            <option value="5">5 - 최고</option>
+            <option value="4">4 - 높음</option>
+            <option value="3" selected>3 - 보통</option>
+            <option value="2">2 - 낮음</option>
+            <option value="1">1 - 최저</option>
+          </select>
+        </div>
+        <div class="modal-actions">
+          <button type="submit" class="btn-primary">저장</button>
+          <button type="button" id="tmpl-modal-cancel" class="btn-secondary">취소</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <div id="overlay" class="overlay hidden"></div>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
