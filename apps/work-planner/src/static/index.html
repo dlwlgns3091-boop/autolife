@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>업무 계획서</title>
+<style>
+:root {
+  --primary: #4f46e5;
+  --primary-light: #6366f1;
+  --danger: #ef4444;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --bg: #f8fafc;
+  --card: #ffffff;
+  --border: #e2e8f0;
+  --text: #1e293b;
+  --muted: #64748b;
+  --radius: 12px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); font-size: 15px; }
+a { color: var(--primary); }
+
+/* Layout */
+.app { max-width: 600px; margin: 0 auto; padding: 16px 12px 80px; }
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.header h1 { font-size: 20px; font-weight: 700; }
+.header-actions { display: flex; gap: 8px; }
+
+/* Nav tabs */
+.nav { display: flex; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-bottom: 16px; }
+.nav button { flex: 1; padding: 10px 4px; border: none; background: none; cursor: pointer; font-size: 13px; color: var(--muted); transition: all .15s; }
+.nav button.active { background: var(--primary); color: #fff; font-weight: 600; }
+
+/* Cards */
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+
+/* Summary */
+.summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
+.stat { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px; text-align: center; }
+.stat-num { font-size: 22px; font-weight: 700; }
+.stat-label { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.stat.overdue .stat-num { color: var(--danger); }
+.stat.in-progress .stat-num { color: var(--primary); }
+
+/* Top task */
+.top-task { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+.top-task-label { font-size: 11px; opacity: .8; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+.top-task-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.top-task-meta { font-size: 12px; opacity: .85; }
+
+/* Templates */
+.templates-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+.tpl-btn { padding: 6px 12px; background: var(--card); border: 1px solid var(--primary); color: var(--primary); border-radius: 20px; font-size: 13px; cursor: pointer; transition: all .15s; }
+.tpl-btn:active { background: var(--primary); color: #fff; }
+
+/* Filters */
+.filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.filter-btn { padding: 5px 12px; border: 1px solid var(--border); background: var(--card); border-radius: 20px; font-size: 12px; cursor: pointer; color: var(--muted); }
+.filter-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+/* Task list */
+.task-item { display: flex; align-items: flex-start; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+.task-item:last-child { border-bottom: none; }
+.task-check { width: 22px; height: 22px; min-width: 22px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s; margin-top: 1px; }
+.task-check:hover { border-color: var(--success); }
+.task-check.done { background: var(--success); border-color: var(--success); }
+.task-body { flex: 1; min-width: 0; }
+.task-title { font-weight: 600; font-size: 14px; word-break: break-word; }
+.task-title.overdue { color: var(--danger); }
+.task-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; align-items: center; }
+.badge { font-size: 11px; padding: 2px 7px; border-radius: 10px; background: #e0e7ff; color: var(--primary); }
+.badge.overdue { background: #fee2e2; color: var(--danger); }
+.badge.status-pending { background: #f1f5f9; color: var(--muted); }
+.badge.status-in_progress { background: #fef3c7; color: #92400e; }
+.badge.status-done { background: #dcfce7; color: #166534; }
+.badge.recur { background: #f0fdf4; color: #166534; }
+.task-actions { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
+.icon-btn { width: 30px; height: 30px; border: 1px solid var(--border); background: var(--card); border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
+.icon-btn:hover { background: var(--bg); }
+.priority-select { border: 1px solid var(--border); background: var(--card); border-radius: 6px; font-size: 12px; padding: 3px 5px; cursor: pointer; }
+
+/* Buttons */
+.btn { padding: 10px 18px; border: none; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all .15s; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-light); }
+.btn-secondary { background: var(--card); border: 1px solid var(--border); color: var(--text); }
+.btn-danger { background: #fee2e2; color: var(--danger); border: 1px solid #fca5a5; }
+.btn-sm { padding: 6px 12px; font-size: 13px; }
+.btn-success { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+
+/* FAB */
+.fab { position: fixed; bottom: 24px; right: 16px; width: 54px; height: 54px; background: var(--primary); color: #fff; border: none; border-radius: 50%; font-size: 26px; cursor: pointer; box-shadow: 0 4px 14px rgba(79,70,229,.4); display: flex; align-items: center; justify-content: center; z-index: 100; }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 200; display: flex; align-items: flex-end; }
+.modal-overlay.center { align-items: center; }
+.modal { background: var(--card); border-radius: 20px 20px 0 0; padding: 20px 16px 32px; width: 100%; max-height: 90vh; overflow-y: auto; }
+.modal-overlay.center .modal { border-radius: 16px; max-width: 480px; margin: 0 auto; }
+.modal h2 { font-size: 17px; font-weight: 700; margin-bottom: 16px; }
+.form-group { margin-bottom: 13px; }
+.form-group label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 4px; font-weight: 600; }
+.form-group input, .form-group select, .form-group textarea { width: 100%; border: 1px solid var(--border); border-radius: 8px; padding: 9px 10px; font-size: 14px; background: var(--bg); color: var(--text); }
+.form-group textarea { resize: vertical; min-height: 70px; }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modal-btns { display: flex; gap: 8px; margin-top: 16px; }
+.modal-btns .btn { flex: 1; }
+.hidden { display: none !important; }
+
+/* Bulk */
+.bulk-area textarea { min-height: 130px; font-family: monospace; font-size: 13px; }
+.bulk-preview { background: var(--bg); border-radius: 8px; padding: 10px; margin-top: 10px; font-size: 12px; }
+.bulk-preview-item { padding: 4px 0; border-bottom: 1px solid var(--border); display: flex; gap: 6px; }
+.bulk-preview-item:last-child { border-bottom: none; }
+.ai-format-bar { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 12px; color: var(--muted); }
+
+/* AI export */
+.ai-export-bar { display: flex; gap: 8px; align-items: center; padding: 10px 0; }
+
+/* Section titles */
+.section-title { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 8px; }
+
+/* Empty state */
+.empty { text-align: center; padding: 32px 0; color: var(--muted); font-size: 14px; }
+
+/* Toast */
+.toast { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; padding: 10px 20px; border-radius: 20px; font-size: 13px; z-index: 999; opacity: 0; transition: opacity .2s; pointer-events: none; }
+.toast.show { opacity: 1; }
+
+/* List management */
+.manage-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+.manage-item:last-child { border-bottom: none; }
+.manage-item span { flex: 1; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>📋 업무 계획서</h1>
+    <div class="header-actions">
+      <button class="btn btn-secondary btn-sm" onclick="openBulkModal()">일괄 추가</button>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <button class="active" onclick="showTab('dashboard')" id="tab-dashboard">대시보드</button>
+    <button onclick="showTab('tasks')" id="tab-tasks">업무 목록</button>
+    <button onclick="showTab('done')" id="tab-done">완료함</button>
+    <button onclick="showTab('manage')" id="tab-manage">관리</button>
+  </nav>
+
+  <!-- DASHBOARD -->
+  <div id="view-dashboard">
+    <div class="summary" id="summary"></div>
+    <div id="top-task-section"></div>
+    <div id="templates-section">
+      <div class="section-title">빠른 추가 (템플릿)</div>
+      <div class="templates-row" id="templates-row">
+        <span style="font-size:13px;color:var(--muted)">템플릿이 없습니다. 관리 탭에서 추가하세요.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- TASKS -->
+  <div id="view-tasks" class="hidden">
+    <div class="filters" id="filters">
+      <button class="filter-btn active" data-filter="" onclick="setFilter('')">전체</button>
+      <button class="filter-btn" data-filter="today" onclick="setFilter('today')">오늘</button>
+      <button class="filter-btn" data-filter="week" onclick="setFilter('week')">이번 주</button>
+      <button class="filter-btn" data-filter="overdue" onclick="setFilter('overdue')">기한 초과</button>
+    </div>
+    <div id="cat-filters" class="filters" style="margin-top:-6px"></div>
+    <div class="ai-export-bar">
+      <button class="btn btn-secondary btn-sm" onclick="copyAiAdvice()">🤖 AI에게 조언받기</button>
+    </div>
+    <div id="task-list"><div class="empty">업무가 없습니다.</div></div>
+  </div>
+
+  <!-- DONE -->
+  <div id="view-done" class="hidden">
+    <div id="done-list"><div class="empty">완료된 업무가 없습니다.</div></div>
+  </div>
+
+  <!-- MANAGE -->
+  <div id="view-manage" class="hidden">
+    <div class="section-title">업무 종류</div>
+    <div class="card" id="cat-manage-list"></div>
+    <button class="btn btn-primary btn-sm" style="margin-bottom:20px" onclick="openCatModal()">+ 업무 종류 추가</button>
+
+    <div class="section-title">반복 업무 템플릿</div>
+    <div class="card" id="tpl-manage-list"></div>
+    <button class="btn btn-primary btn-sm" onclick="openTplModal()">+ 템플릿 추가</button>
+  </div>
+</div>
+
+<button class="fab" onclick="openTaskModal()" title="업무 추가">+</button>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Task Modal -->
+<div class="modal-overlay hidden" id="task-modal-overlay" onclick="closeIfOverlay(event,'task-modal-overlay')">
+  <div class="modal">
+    <h2 id="task-modal-title">업무 추가</h2>
+    <div class="form-group">
+      <label>제목 *</label>
+      <input id="t-title" type="text" placeholder="업무 제목">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>우선순위 (1~5)</label>
+        <select id="t-priority">
+          <option value="5">5 (최고)</option>
+          <option value="4">4</option>
+          <option value="3" selected>3 (기본)</option>
+          <option value="2">2</option>
+          <option value="1">1 (낮음)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>상태</label>
+        <select id="t-status">
+          <option value="pending">대기</option>
+          <option value="in_progress">진행중</option>
+          <option value="done">완료</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>업무 종류</label>
+        <select id="t-category"><option value="">-- 선택 없음 --</option></select>
+      </div>
+      <div class="form-group">
+        <label>반복</label>
+        <select id="t-recurrence">
+          <option value="">없음</option>
+          <option value="daily">매일</option>
+          <option value="weekly">매주</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>마감일</label>
+      <input id="t-deadline" type="date">
+    </div>
+    <div class="form-group">
+      <label>메모</label>
+      <textarea id="t-memo" placeholder="메모 (선택)"></textarea>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" onclick="closeModal('task-modal-overlay')">취소</button>
+      <button class="btn btn-primary" onclick="submitTask()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bulk Modal -->
+<div class="modal-overlay hidden" id="bulk-modal-overlay" onclick="closeIfOverlay(event,'bulk-modal-overlay')">
+  <div class="modal">
+    <h2>여러 업무 한번에 추가</h2>
+    <div class="ai-format-bar">
+      <span>AI에게 목록 만들어 달라고 하세요</span>
+      <button class="btn btn-secondary btn-sm" onclick="copyAiFormat()">📋 AI용 양식 복사</button>
+    </div>
+    <div class="form-group bulk-area">
+      <label>업무 목록 붙여넣기 <span style="font-weight:400;color:var(--muted)">(제목 | 종류 | 우선순위 | 마감 | 메모)</span></label>
+      <textarea id="bulk-text" placeholder="증례 포스팅 초안 | 증례 | 5 | 2026-06-18 | 활짝웃는&#10;블로그 1건 | 블로그 | 3" oninput="bulkPreview()"></textarea>
+    </div>
+    <div id="bulk-preview-area" class="hidden">
+      <div class="section-title" id="bulk-count-label"></div>
+      <div class="bulk-preview" id="bulk-preview-list"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" onclick="closeModal('bulk-modal-overlay')">취소</button>
+      <button class="btn btn-primary" onclick="submitBulk()">등록 확정</button>
+    </div>
+  </div>
+</div>
+
+<!-- Category Modal -->
+<div class="modal-overlay center hidden" id="cat-modal-overlay" onclick="closeIfOverlay(event,'cat-modal-overlay')">
+  <div class="modal">
+    <h2 id="cat-modal-title">업무 종류 추가</h2>
+    <div class="form-group">
+      <label>이름</label>
+      <input id="cat-name" type="text" placeholder="예: 증례, 블로그, 회의">
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" onclick="closeModal('cat-modal-overlay')">취소</button>
+      <button class="btn btn-primary" onclick="submitCategory()">저장</button>
+    </div>
+  </div>
+</div>
+
+<!-- Template Modal -->
+<div class="modal-overlay center hidden" id="tpl-modal-overlay" onclick="closeIfOverlay(event,'tpl-modal-overlay')">
+  <div class="modal">
+    <h2 id="tpl-modal-title">템플릿 추가</h2>
+    <div class="form-group">
+      <label>제목 *</label>
+      <input id="tpl-title" type="text" placeholder="템플릿 제목">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>업무 종류</label>
+        <select id="tpl-category"><option value="">-- 선택 없음 --</option></select>
+      </div>
+      <div class="form-group">
+        <label>기본 우선순위</label>
+        <select id="tpl-priority">
+          <option value="5">5 (최고)</option>
+          <option value="4">4</option>
+          <option value="3" selected>3</option>
+          <option value="2">2</option>
+          <option value="1">1</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>기본 마감 오프셋 (오늘 + N일, 비워두면 마감 없음)</label>
+      <input id="tpl-offset" type="number" min="0" placeholder="예: 2 → 오늘+2일">
+    </div>
+    <div class="modal-btns">
+      <button class="btn btn-secondary" onclick="closeModal('tpl-modal-overlay')">취소</button>
+      <button class="btn btn-primary" onclick="submitTemplate()">저장</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API = '';
+let currentTab = 'dashboard';
+let currentFilter = localStorage.getItem('wp_filter') || '';
+let currentCatFilter = localStorage.getItem('wp_cat_filter') ? parseInt(localStorage.getItem('wp_cat_filter')) : null;
+let editingTaskId = null;
+let editingCatId = null;
+let editingTplId = null;
+let categories = [];
+let tasks = [];
+let templates = [];
+let today = new Date().toISOString().slice(0,10);
+
+async function api(method, path, body) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API + path, opts);
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    throw new Error(e.detail || r.statusText);
+  }
+  if (r.status === 204) return null;
+  return r.json();
+}
+
+function toast(msg, dur=2000) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(() => el.classList.remove('show'), dur);
+}
+
+function showTab(tab) {
+  currentTab = tab;
+  ['dashboard','tasks','done','manage'].forEach(t => {
+    document.getElementById('view-'+t).classList.toggle('hidden', t !== tab);
+    document.getElementById('tab-'+t).classList.toggle('active', t === tab);
+  });
+  if (tab === 'dashboard') loadDashboard();
+  if (tab === 'tasks') loadTasks();
+  if (tab === 'done') loadDone();
+  if (tab === 'manage') loadManage();
+}
+
+// ---- DASHBOARD ----
+async function loadDashboard() {
+  const [summary, top, tpls, cats] = await Promise.all([
+    api('GET','/tasks/summary'),
+    api('GET','/tasks/top'),
+    api('GET','/templates'),
+    api('GET','/categories'),
+  ]);
+  categories = cats;
+  templates = tpls;
+
+  document.getElementById('summary').innerHTML = `
+    <div class="stat"><div class="stat-num">${summary.today_count}</div><div class="stat-label">오늘 할 일</div></div>
+    <div class="stat overdue"><div class="stat-num">${summary.overdue_count}</div><div class="stat-label">기한 초과</div></div>
+    <div class="stat in-progress"><div class="stat-num">${summary.in_progress_count}</div><div class="stat-label">진행중</div></div>
+  `;
+
+  const topEl = document.getElementById('top-task-section');
+  if (top) {
+    const dl = top.deadline ? ` · 마감 ${top.deadline.slice(5)}` : '';
+    const cat = top.category_name ? ` · ${top.category_name}` : '';
+    topEl.innerHTML = `
+      <div class="top-task">
+        <div class="top-task-label">⚡ 지금 할 일</div>
+        <div class="top-task-title">${esc(top.title)}</div>
+        <div class="top-task-meta">우선순위 ${top.priority}${cat}${dl}</div>
+      </div>`;
+  } else {
+    topEl.innerHTML = '';
+  }
+
+  const row = document.getElementById('templates-row');
+  if (tpls.length === 0) {
+    row.innerHTML = '<span style="font-size:13px;color:var(--muted)">템플릿이 없습니다. 관리 탭에서 추가하세요.</span>';
+  } else {
+    row.innerHTML = tpls.map(t =>
+      `<button class="tpl-btn" onclick="createFromTemplate(${t.id},'${esc(t.title)}')">${esc(t.title)}</button>`
+    ).join('');
+  }
+}
+
+async function createFromTemplate(id, title) {
+  try {
+    await api('POST', `/templates/${id}/create-task`);
+    toast(`✅ "${title}" 업무 생성됨`);
+    loadDashboard();
+  } catch(e) { toast('오류: ' + e.message); }
+}
+
+// ---- TASKS ----
+async function loadTasks() {
+  categories = await api('GET','/categories');
+  renderCatFilters();
+  let url = '/tasks?';
+  if (currentFilter) url += `filter=${currentFilter}&`;
+  if (currentCatFilter) url += `category_id=${currentCatFilter}&`;
+  tasks = await api('GET', url);
+  renderTaskList('task-list', tasks, false);
+}
+
+function renderCatFilters() {
+  const el = document.getElementById('cat-filters');
+  el.innerHTML = categories.map(c =>
+    `<button class="filter-btn${currentCatFilter===c.id?' active':''}" onclick="setCatFilter(${c.id})">${esc(c.name)}</button>`
+  ).join('') + (currentCatFilter ? `<button class="filter-btn active" onclick="setCatFilter(null)">✕ 종류 해제</button>` : '');
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  localStorage.setItem('wp_filter', f);
+  document.querySelectorAll('#filters .filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.filter === f);
+  });
+  loadTasks();
+}
+
+function setCatFilter(id) {
+  currentCatFilter = id;
+  if (id) localStorage.setItem('wp_cat_filter', id);
+  else localStorage.removeItem('wp_cat_filter');
+  loadTasks();
+}
+
+async function loadDone() {
+  const done = await api('GET','/tasks?filter=done');
+  renderTaskList('done-list', done, true);
+}
+
+function renderTaskList(containerId, list, isDone) {
+  const el = document.getElementById(containerId);
+  if (!list.length) { el.innerHTML = '<div class="empty">업무가 없습니다.</div>'; return; }
+  el.innerHTML = `<div class="card">${list.map(t => renderTask(t, isDone)).join('')}</div>`;
+}
+
+function renderTask(t, isDone) {
+  const isOverdue = t.deadline && t.deadline < today && t.status !== 'done';
+  const dlLabel = t.deadline ? (isOverdue ? `<span class="badge overdue">기한초과 ${t.deadline.slice(5)}</span>` : `<span class="badge">${t.deadline.slice(5)}</span>`) : '';
+  const catLabel = t.category_name ? `<span class="badge">${esc(t.category_name)}</span>` : '';
+  const recurLabel = t.recurrence ? `<span class="badge recur">${t.recurrence==='daily'?'매일':'매주'}</span>` : '';
+  const statusLabel = `<span class="badge status-${t.status}">${{pending:'대기',in_progress:'진행중',done:'완료'}[t.status]}</span>`;
+
+  const priorityOpts = [1,2,3,4,5].map(p =>
+    `<option value="${p}"${t.priority===p?' selected':''}>${p}</option>`
+  ).join('');
+
+  const checkClass = t.status==='done' ? ' done' : '';
+  const checkIcon = t.status==='done' ? '✓' : '';
+
+  return `<div class="task-item" id="task-${t.id}">
+    <div class="task-check${checkClass}" onclick="toggleDone(${t.id},'${t.status}')" title="완료 체크">${checkIcon}</div>
+    <div class="task-body">
+      <div class="task-title${isOverdue?' overdue':''}">${esc(t.title)}</div>
+      <div class="task-meta">${statusLabel}${catLabel}${dlLabel}${recurLabel}</div>
+    </div>
+    <div class="task-actions">
+      <select class="priority-select" onchange="quickPriority(${t.id},this.value)" title="우선순위">${priorityOpts}</select>
+      <button class="icon-btn" onclick="openTaskModal(${t.id})" title="편집">✏️</button>
+      <button class="icon-btn" onclick="deleteTask(${t.id})" title="삭제">🗑</button>
+    </div>
+  </div>`;
+}
+
+async function toggleDone(id, status) {
+  const newStatus = status === 'done' ? 'pending' : 'done';
+  try {
+    await api('PATCH', `/tasks/${id}/status?status=${newStatus}`);
+    if (currentTab === 'tasks') loadTasks();
+    else if (currentTab === 'done') loadDone();
+    else loadDashboard();
+  } catch(e) { toast('오류: ' + e.message); }
+}
+
+async function quickPriority(id, p) {
+  try {
+    await api('PATCH', `/tasks/${id}/priority?priority=${p}`);
+    if (currentTab === 'tasks') loadTasks();
+    else loadDashboard();
+  } catch(e) { toast('오류: ' + e.message); }
+}
+
+async function deleteTask(id) {
+  if (!confirm('삭제하시겠습니까?')) return;
+  await api('DELETE', `/tasks/${id}`);
+  if (currentTab === 'tasks') loadTasks();
+  else if (currentTab === 'done') loadDone();
+  else loadDashboard();
+}
+
+// ---- AI ADVICE EXPORT ----
+async function copyAiAdvice() {
+  let url = '/tasks?';
+  if (currentFilter) url += `filter=${currentFilter}&`;
+  if (currentCatFilter) url += `category_id=${currentCatFilter}&`;
+  const list = await api('GET', url);
+  if (!list.length) { toast('업무가 없습니다.'); return; }
+  const d = today.slice(5).replace('-','-');
+  const lines = list.map((t,i) => {
+    const parts = [t.title];
+    if (t.category_name) parts.push(t.category_name);
+    parts.push(`우선순위 ${t.priority}`);
+    if (t.deadline) parts.push(`마감 ${t.deadline.slice(5)}`);
+    parts.push({pending:'대기',in_progress:'진행중',done:'완료'}[t.status]);
+    return `${i+1}. ${parts.join(' | ')}`;
+  }).join('\n');
+  const text = `[내 업무 목록 - ${today}] (우선순위·마감순)\n${lines}\n위 업무들을 우선순위와 마감을 고려해 오늘 어떤 순서로 처리하면 효율적일지 조언해줘.`;
+  navigator.clipboard.writeText(text).then(() => toast('📋 복사됨! AI에게 붙여넣으세요.')).catch(() => toast('복사 실패'));
+}
+
+// ---- TASK MODAL ----
+function openTaskModal(id=null) {
+  editingTaskId = id;
+  const overlay = document.getElementById('task-modal-overlay');
+  document.getElementById('task-modal-title').textContent = id ? '업무 수정' : '업무 추가';
+
+  const catSel = document.getElementById('t-category');
+  catSel.innerHTML = '<option value="">-- 선택 없음 --</option>' +
+    categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+
+  if (id) {
+    const t = tasks.find(x=>x.id===id) || null;
+    if (!t) { api('GET',`/tasks/${id}`).then(fillTaskForm); }
+    else fillTaskForm(t);
+  } else {
+    document.getElementById('t-title').value = '';
+    document.getElementById('t-priority').value = '3';
+    document.getElementById('t-status').value = 'pending';
+    document.getElementById('t-category').value = '';
+    document.getElementById('t-recurrence').value = '';
+    document.getElementById('t-deadline').value = '';
+    document.getElementById('t-memo').value = '';
+  }
+  overlay.classList.remove('hidden');
+  document.getElementById('t-title').focus();
+}
+
+function fillTaskForm(t) {
+  document.getElementById('t-title').value = t.title;
+  document.getElementById('t-priority').value = t.priority;
+  document.getElementById('t-status').value = t.status;
+  document.getElementById('t-category').value = t.category_id || '';
+  document.getElementById('t-recurrence').value = t.recurrence || '';
+  document.getElementById('t-deadline').value = t.deadline || '';
+  document.getElementById('t-memo').value = t.memo || '';
+}
+
+async function submitTask() {
+  const title = document.getElementById('t-title').value.trim();
+  if (!title) { toast('제목을 입력하세요.'); return; }
+  const body = {
+    title,
+    priority: parseInt(document.getElementById('t-priority').value),
+    status: document.getElementById('t-status').value,
+    category_id: document.getElementById('t-category').value ? parseInt(document.getElementById('t-category').value) : null,
+    recurrence: document.getElementById('t-recurrence').value || null,
+    deadline: document.getElementById('t-deadline').value || null,
+    memo: document.getElementById('t-memo').value.trim() || null,
+  };
+  try {
+    if (editingTaskId) {
+      await api('PUT', `/tasks/${editingTaskId}`, body);
+      toast('업무가 수정되었습니다.');
+    } else {
+      await api('POST', '/tasks', body);
+      toast('업무가 추가되었습니다.');
+    }
+    closeModal('task-modal-overlay');
+    if (currentTab === 'tasks') loadTasks();
+    else if (currentTab === 'done') loadDone();
+    else loadDashboard();
+  } catch(e) { toast('오류: ' + e.message); }
+}
+
+// ---- BULK ----
+function openBulkModal() {
+  document.getElementById('bulk-text').value = '';
+  document.getElementById('bulk-preview-area').classList.add('hidden');
+  document.getElementById('bulk-modal-overlay').classList.remove('hidden');
+}
+
+async function bulkPreview() {
+  const text = document.getElementById('bulk-text').value;
+  if (!text.trim()) { document.getElementById('bulk-preview-area').classList.add('hidden'); return; }
+  try {
+    const res = await api('POST','/tasks/bulk/preview',{text});
+    document.getElementById('bulk-count-label').textContent = `미리보기: ${res.count}건`;
+    document.getElementById('bulk-preview-list').innerHTML = res.preview.map(p => {
+      const parts = [p.title];
+      if (p.category_name) parts.push(p.category_name);
+      parts.push(`P${p.priority}`);
+      if (p.deadline) parts.push(p.deadline);
+      if (p.memo) parts.push(p.memo);
+      return `<div class="bulk-preview-item">${parts.map(x=>`<span>${esc(x)}</span>`).join('<span style="color:var(--muted)"> | </span>')}</div>`;
+    }).join('');
+    document.getElementById('bulk-preview-area').classList.remove('hidden');
+  } catch(e) { /* ignore preview errors */ }
+}
+
+async function submitBulk() {
+  const text = document.getElementById('bulk-text').value;
+  if (!text.trim()) { toast('내용을 입력하세요.'); return; }
+  try {
+    const res = await api('POST','/tasks/bulk',{text});
+    toast(`✅ ${res.length}개 업무가 등록되었습니다.`);
+    closeModal('bulk-modal-overlay');
+    if (currentTab === 'tasks') loadTasks();
+    else loadDashboard();
+  } catch(e) { toast('오류: ' + e.message); }
+}
+
+function copyAiFormat() {
+  const txt = `내 할 일들을 아래 양식으로 정리해줘. 한 줄에 하나씩, 파이프(|)로 구분:\n제목 | 종류 | 우선순위(1~5) | 마감(YYYY-MM-DD) | 메모\n(뒤 항목은 모르면 생략 가능)`;
+  navigator.clipboard.writeText(txt).then(() => toast('📋 AI용 양식 복사됨!')).catch(() => toast('복사 실패'));
+}
+
+// ---- MANAGE ----
+async function loadManage() {
+  categories = await api('GET','/categories');
+  templates = await api('GET','/templates');
+  renderCatManage();
+  renderTplManage();
+}
+
+function renderCatManage() {
+  const el = document.getElementById('cat-manage-list');
+  if (!categories.length) { el.innerHTML = '<div class="empty" style="padding:12px 0">업무 종류가 없습니다.</div>'; return; }
+  el.innerHTML = categories.map(c => `
+    <div class="manage-item">
+      <span>${esc(c.name)}</span>
+      <button class="btn btn-secondary btn-sm" onclick="openCatModal(${c.id},'${esc(c.name)}')">수정</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteCat(${c.id})">삭제</button>
+    </div>`).join('');
+}
+
+function renderTplManage() {
+  const el = document.getElementById('tpl-manage-list');
+  if (!templates.length) { el.innerHTML = '<div class="empty" style="padding:12px 0">템플릿이 없습니다.</div>'; return; }
+  el.innerHTML = templates.map(t => `
+    <div class="manage-item">
+      <span>${esc(t.title)}${t.category_name?` <small style="color:var(--muted)">(${esc(t.category_name)})</small>`:''} <small style="color:var(--muted)">P${t.default_priority}${t.deadline_offset_days!=null?` +${t.deadline_offset_days}일`:''}</small></span>
+      <button class="btn btn-secondary btn-sm" onclick="openTplModal(${t.id})">수정</button>
+      <button class="btn btn-danger btn-sm" onclick="deleteTpl(${t.id})">삭제</button>
+    </div>`).join('');
+}
+
+// Category CRUD
+function openCatModal(id=null, name='') {
+  editingCatId = id;
+  document.getElementById('cat-modal-title').textContent = id ? '업무 종류 수정' : '업무 종류 추가';
+  document.getElementById('cat-name').value = name;
+  document.getElementById('cat-modal-overlay').classList.remove('hidden');
+  document.getElementById('cat-name').focus();
+}
+
+async function submitCategory() {
+  const name = document.getElementById('cat-name').value.trim();
+  if (!name) { toast('이름을 입력하세요.'); return; }
+  try {
+    if (editingCatId) await api('PUT',`/categories/${editingCatId}`,{name});
+    else await api('POST','/categories',{name});
+    closeModal('cat-modal-overlay');
+    loadManage();
+  } catch(e) { toast('오류: ' + e.message); }
+}
+
+async function deleteCat(id) {
+  if (!confirm('업무 종류를 삭제하시겠습니까?')) return;
+  await api('DELETE',`/categories/${id}`);
+  loadManage();
+}
+
+// Template CRUD
+function openTplModal(id=null) {
+  editingTplId = id;
+  document.getElementById('tpl-modal-title').textContent = id ? '템플릿 수정' : '템플릿 추가';
+  const catSel = document.getElementById('tpl-category');
+  catSel.innerHTML = '<option value="">-- 선택 없음 --</option>' +
+    categories.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('');
+
+  if (id) {
+    const tpl = templates.find(t=>t.id===id);
+    if (tpl) {
+      document.getElementById('tpl-title').value = tpl.title;
+      document.getElementById('tpl-category').value = tpl.category_id || '';
+      document.getElementById('tpl-priority').value = tpl.default_priority;
+      document.getElementById('tpl-offset').value = tpl.deadline_offset_days ?? '';
+    }
+  } else {
+    document.getElementById('tpl-title').value = '';
+    document.getElementById('tpl-category').value = '';
+    document.getElementById('tpl-priority').value = '3';
+    document.getElementById('tpl-offset').value = '';
+  }
+  document.getElementById('tpl-modal-overlay').classList.remove('hidden');
+}
+
+async function submitTemplate() {
+  const title = document.getElementById('tpl-title').value.trim();
+  if (!title) { toast('제목을 입력하세요.'); return; }
+  const offsetVal = document.getElementById('tpl-offset').value;
+  const body = {
+    title,
+    category_id: document.getElementById('tpl-category').value ? parseInt(document.getElementById('tpl-category').value) : null,
+    default_priority: parseInt(document.getElementById('tpl-priority').value),
+    deadline_offset_days: offsetVal !== '' ? parseInt(offsetVal) : null,
+  };
+  try {
+    if (editingTplId) await api('PUT',`/templates/${editingTplId}`,body);
+    else await api('POST','/templates',body);
+    closeModal('tpl-modal-overlay');
+    loadManage();
+  } catch(e) { toast('오류: ' + e.message); }
+}
+
+async function deleteTpl(id) {
+  if (!confirm('템플릿을 삭제하시겠습니까?')) return;
+  await api('DELETE',`/templates/${id}`);
+  loadManage();
+}
+
+// Helpers
+function closeModal(id) { document.getElementById(id).classList.add('hidden'); }
+function closeIfOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// Keyboard shortcuts
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    ['task-modal-overlay','bulk-modal-overlay','cat-modal-overlay','tpl-modal-overlay']
+      .forEach(id => closeModal(id));
+  }
+});
+
+// Initialize
+loadDashboard();
+</script>
+</body>
+</html>
