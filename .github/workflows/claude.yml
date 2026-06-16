@@ -1,11 +1,4 @@
-# autolife — Claude Code Action 워크플로
-# 레퍼런스: https://github.com/anthropics/claude-code-action
-# 버전: anthropics/claude-code-action@v1 (2025년 기준 최신 stable)
-
-
 name: Claude Assistant
-
-
 on:
   issue_comment:
     types: [created]
@@ -15,28 +8,20 @@ on:
     types: [opened, assigned, labeled]
   pull_request_review:
     types: [submitted]
-
-
 permissions:
   contents: write
   pull-requests: write
   issues: write
   id-token: write
-
-
 jobs:
   claude-response:
     runs-on: ubuntu-latest
-
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
-
       - name: Run Claude Code Action
         uses: anthropics/claude-code-action@v1
         with:
-          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY01 }}
+          claude_code_oauth_token: ${{ secrets.ANTHROPIC_API_KEY01 }}
