@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+*.pyo
+jeonse.db
+test_jeonse.db
+.env
