@@ -1,0 +1,60 @@
+# autolife — Claude Code Action 워크플로
+# 레퍼런스: https://github.com/anthropics/claude-code-action
+# 버전: anthropics/claude-code-action@v1 (2025년 기준 최신 stable)
+#
+# [확인된 사항]
+# - on 트리거: issue_comment, issues, pull_request_review_comment, pull_request_review
+# - 기본 trigger_phrase: @claude (변경 시 trigger_phrase 입력값 사용)
+# - 인증: anthropic_api_key 또는 claude_code_oauth_token
+# - permissions: contents/pull-requests/issues write 는 공식 configuration.md 권장사항
+#
+# [주의]
+# - GitHub App 설치가 필요합니다 (claude-code-action 공식 앱 또는 커스텀 앱)
+# - ANTHROPIC_API_KEY 시크릿을 레포 설정에서 등록해야 합니다
+# - Claude가 코드를 push하려면 contents: write 권한이 필요합니다
+
+name: Claude Assistant
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+  issues:
+    types: [opened, assigned, labeled]
+  pull_request_review:
+    types: [submitted]
+
+# Claude가 PR 생성/수정, 이슈 코멘트, 코드 push를 위해 필요한 최소 권한
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+
+jobs:
+  claude-response:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Run Claude Code Action
+        uses: anthropics/claude-code-action@v1
+        with:
+          # Anthropic API 키 (필수)
+          # GitHub 레포 Settings > Secrets and variables > Actions 에서 등록
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+
+          # 트리거 문구 (기본값: @claude)
+          # 이슈/PR 코멘트에서 @claude 를 언급하면 실행됩니다
+          # trigger_phrase: "@claude"
+
+          # Claude에게 전달할 시스템 수준 지시사항 (선택)
+          # CLAUDE.md 파일이 있으면 Claude가 자동으로 참고합니다
+          # claude_args: |
+          #   --max-turns 10
+          #   --model claude-opus-4-5
+
+          # 이슈 할당 시 트리거할 사용자명 (선택)
+          # assignee_trigger: "claude"
+
+          # 레이블 트리거 (선택) — 이슈에 해당 레이블 추가 시 실행
+          # label_trigger: "claude"
