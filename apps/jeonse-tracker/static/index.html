@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>전세집 트래커</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --primary: #4F7FE8;
+    --primary-dark: #3563C7;
+    --danger: #E85454;
+    --success: #2ECC71;
+    --bg: #F5F7FB;
+    --card: #FFFFFF;
+    --text: #1A1A2E;
+    --muted: #6B7280;
+    --border: #E5E7EB;
+    --radius: 12px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.08);
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+  #app { max-width: 600px; margin: 0 auto; padding: 0 0 80px; }
+
+  /* Nav */
+  nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--card); border-top: 1px solid var(--border); display: flex; z-index: 100; }
+  nav button { flex: 1; padding: 14px 4px 10px; border: none; background: none; cursor: pointer; font-size: 11px; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 4px; transition: color .2s; }
+  nav button .icon { font-size: 22px; }
+  nav button.active { color: var(--primary); font-weight: 600; }
+
+  /* Header */
+  .page-header { padding: 20px 16px 12px; }
+  .page-header h1 { font-size: 22px; font-weight: 700; }
+  .page-header p { font-size: 13px; color: var(--muted); margin-top: 2px; }
+
+  /* Cards */
+  .card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); margin: 0 16px 12px; padding: 16px; }
+
+  /* House list */
+  .house-card { cursor: pointer; transition: transform .15s; }
+  .house-card:active { transform: scale(0.98); }
+  .house-card .rank { display: inline-block; background: var(--primary); color: #fff; border-radius: 6px; padding: 2px 8px; font-size: 12px; font-weight: 700; margin-bottom: 8px; }
+  .house-card h2 { font-size: 17px; font-weight: 700; }
+  .house-card .meta { font-size: 13px; color: var(--muted); margin-top: 4px; }
+  .house-card .scores { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .house-card .score-chip { background: var(--bg); border-radius: 20px; padding: 4px 12px; font-size: 13px; }
+  .house-card .score-chip span { font-weight: 700; color: var(--primary); }
+  .status-badge { display: inline-block; border-radius: 20px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
+  .status-관심 { background: #EFF6FF; color: #2563EB; }
+  .status-방문예정 { background: #FFF7ED; color: #D97706; }
+  .status-방문완료 { background: #F0FDF4; color: #15803D; }
+  .status-제외 { background: #FEF2F2; color: #DC2626; }
+
+  /* Buttons */
+  .btn { display: inline-block; border: none; border-radius: 10px; padding: 13px 20px; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; text-align: center; transition: opacity .15s; }
+  .btn:active { opacity: 0.8; }
+  .btn-primary { background: var(--primary); color: #fff; }
+  .btn-danger { background: var(--danger); color: #fff; }
+  .btn-outline { background: var(--bg); color: var(--primary); border: 1.5px solid var(--primary); }
+  .btn-sm { padding: 8px 14px; font-size: 13px; width: auto; border-radius: 8px; }
+  .fab { position: fixed; bottom: 80px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background: var(--primary); color: white; font-size: 28px; border: none; box-shadow: 0 4px 16px rgba(79,127,232,.4); cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 50; }
+
+  /* Forms */
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; padding: 13px 14px; border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: 16px; background: var(--card); color: var(--text); appearance: none; -webkit-appearance: none;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    outline: none; border-color: var(--primary);
+  }
+  .form-group textarea { min-height: 80px; resize: vertical; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+  /* Score input */
+  .score-row { display: flex; align-items: center; gap: 8px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .score-row:last-child { border-bottom: none; }
+  .score-label { flex: 1; font-size: 14px; }
+  .score-stars { display: flex; gap: 4px; }
+  .star { font-size: 26px; cursor: pointer; color: #D1D5DB; transition: color .1s; user-select: none; }
+  .star.active { color: #FBBF24; }
+  .score-val { min-width: 24px; text-align: center; font-weight: 700; color: var(--primary); font-size: 15px; }
+
+  /* Comparison */
+  .compare-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  .compare-table th { background: var(--bg); padding: 10px 8px; font-weight: 600; font-size: 13px; text-align: center; }
+  .compare-table th:first-child { text-align: left; }
+  .compare-table td { padding: 10px 8px; border-bottom: 1px solid var(--border); text-align: center; }
+  .compare-table td:first-child { text-align: left; font-size: 13px; }
+  .compare-table .total-row td { font-weight: 700; background: #EFF6FF; color: var(--primary); }
+
+  /* Weight slider */
+  .weight-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .weight-row:last-child { border-bottom: none; }
+  .weight-label { flex: 1; font-size: 14px; }
+  .weight-val { min-width: 28px; text-align: center; font-weight: 700; color: var(--primary); }
+  input[type=range] { flex: 1; -webkit-appearance: none; height: 4px; background: var(--border); border-radius: 4px; outline: none; }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--primary); cursor: pointer; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 48px 16px; color: var(--muted); }
+  .empty .icon { font-size: 48px; margin-bottom: 12px; }
+  .empty p { font-size: 15px; }
+
+  /* Pages */
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* Modal */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; }
+  .modal-overlay.open { display: flex; align-items: flex-end; }
+  .modal { background: var(--card); border-radius: 20px 20px 0 0; padding: 20px 16px 40px; width: 100%; max-height: 92vh; overflow-y: auto; }
+  .modal-handle { width: 40px; height: 4px; background: var(--border); border-radius: 4px; margin: 0 auto 16px; }
+  .modal h2 { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+
+  /* Section title */
+  .section-title { font-size: 16px; font-weight: 700; padding: 16px 16px 8px; }
+
+  /* User tabs */
+  .user-tabs { display: flex; gap: 8px; padding: 0 16px 12px; }
+  .user-tab { flex: 1; padding: 10px; text-align: center; border-radius: 10px; border: 1.5px solid var(--border); font-size: 14px; font-weight: 600; cursor: pointer; background: var(--card); color: var(--muted); }
+  .user-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+
+  .separator { height: 1px; background: var(--border); margin: 4px 16px; }
+  .flex-row { display: flex; gap: 8px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Page: List -->
+  <div id="page-list" class="page active">
+    <div class="page-header">
+      <h1>🏠 전세집 트래커</h1>
+      <p>합산 점수 순으로 정렬됩니다</p>
+    </div>
+    <div id="house-list"></div>
+    <button class="fab" onclick="openAddHouse()">+</button>
+  </div>
+
+  <!-- Page: Compare (Detail) -->
+  <div id="page-compare" class="page">
+    <div class="page-header">
+      <button onclick="showPage('list')" style="background:none;border:none;font-size:15px;color:var(--primary);cursor:pointer;padding:0;margin-bottom:8px;">← 목록으로</button>
+      <h1 id="compare-title">상세 비교</h1>
+    </div>
+    <div id="compare-content"></div>
+  </div>
+
+  <!-- Page: Settings -->
+  <div id="page-settings" class="page">
+    <div class="page-header">
+      <h1>⚙️ 선호 가중치 설정</h1>
+      <p>각 항목의 중요도를 조정하세요 (1~5)</p>
+    </div>
+    <div id="settings-content"></div>
+  </div>
+</div>
+
+<!-- Bottom Nav -->
+<nav>
+  <button class="active" onclick="showPage('list')" id="nav-list">
+    <span class="icon">🏠</span>후보 목록
+  </button>
+  <button onclick="showPage('settings')" id="nav-settings">
+    <span class="icon">⚙️</span>가중치 설정
+  </button>
+</nav>
+
+<!-- Modal: Add/Edit House -->
+<div class="modal-overlay" id="modal-house">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="modal-house-title">집 후보 추가</h2>
+    <form id="house-form" onsubmit="submitHouse(event)">
+      <div class="form-group">
+        <label>지역/동네 *</label>
+        <input type="text" id="f-region" placeholder="예: 마포구 합정동" required>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>보증금 (만원) *</label>
+          <input type="number" id="f-deposit" placeholder="30000" required>
+        </div>
+        <div class="form-group">
+          <label>면적 (평)</label>
+          <input type="number" id="f-area" placeholder="10" step="0.1">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>방 수</label>
+          <input type="number" id="f-rooms" placeholder="2" min="1">
+        </div>
+        <div class="form-group">
+          <label>화장실 수</label>
+          <input type="number" id="f-bathrooms" placeholder="1" min="1">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>월 예상 고정비 (만원)</label>
+        <input type="number" id="f-monthly" placeholder="65">
+      </div>
+      <div class="form-group">
+        <label>매물 링크</label>
+        <input type="url" id="f-link" placeholder="https://...">
+      </div>
+      <div class="form-group">
+        <label>상태</label>
+        <select id="f-status">
+          <option>관심</option>
+          <option>방문예정</option>
+          <option>방문완료</option>
+          <option>제외</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>메모</label>
+        <textarea id="f-memo" placeholder="특이사항 등 자유롭게..."></textarea>
+      </div>
+      <div class="flex-row" style="margin-top:4px;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('modal-house')">취소</button>
+        <button type="submit" class="btn btn-primary">저장</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal: Evaluate -->
+<div class="modal-overlay" id="modal-eval">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="modal-eval-title">평가 입력</h2>
+    <div class="user-tabs" id="eval-user-tabs"></div>
+    <div id="eval-scores"></div>
+    <button class="btn btn-primary" style="margin-top:16px;" onclick="closeModal('modal-eval');loadHouseList();">완료</button>
+  </div>
+</div>
+
+<script>
+let STATE = { users: [], items: [], houses: [], currentHouseId: null, editHouseId: null, evalUserId: null };
+
+async function api(method, path, body) {
+  const opts = { method, headers: {'Content-Type':'application/json'} };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch('/api' + path, opts);
+  if (!r.ok) throw new Error(await r.text());
+  return r.json();
+}
+
+async function init() {
+  [STATE.users, STATE.items] = await Promise.all([api('GET', '/users'), api('GET', '/items')]);
+  await loadHouseList();
+  loadSettings();
+}
+
+// ── Navigation ──────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  const nb = document.getElementById('nav-' + name);
+  if (nb) nb.classList.add('active');
+  if (name === 'list') loadHouseList();
+  if (name === 'settings') loadSettings();
+}
+
+// ── House List ───────────────────────────────────────────────────────────────
+async function loadHouseList() {
+  STATE.houses = await api('GET', '/houses');
+  const el = document.getElementById('house-list');
+  if (!STATE.houses.length) {
+    el.innerHTML = `<div class="empty"><div class="icon">🏘️</div><p>아직 등록된 집이 없어요.<br>+ 버튼으로 추가해보세요!</p></div>`;
+    return;
+  }
+  el.innerHTML = STATE.houses.map((h, i) => {
+    const scoreChips = STATE.users.map(u =>
+      `<span class="score-chip">${u.name} <span>${h.scores[u.id] ?? 0}</span></span>`
+    ).join('');
+    const area = h.area ? h.area + '평' : '-';
+    const dep = h.deposit ? h.deposit.toLocaleString() + '만' : '-';
+    const cost = h.monthly_cost ? '월' + h.monthly_cost + '만' : '';
+    return `
+    <div class="card house-card" onclick="showDetail(${h.id})">
+      <span class="rank">#${i+1}</span>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;">
+        <h2>${h.region}</h2>
+        <span class="status-badge status-${h.status}">${h.status}</span>
+      </div>
+      <div class="meta">보증금 ${dep} · ${area}${cost ? ' · ' + cost : ''}</div>
+      <div class="scores">
+        ${scoreChips}
+        <span class="score-chip">합산 <span>${h.combined_score}</span></span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Add/Edit House ───────────────────────────────────────────────────────────
+function openAddHouse() {
+  STATE.editHouseId = null;
+  document.getElementById('modal-house-title').textContent = '집 후보 추가';
+  document.getElementById('house-form').reset();
+  openModal('modal-house');
+}
+
+async function openEditHouse(id) {
+  const h = await api('GET', `/houses/${id}`);
+  STATE.editHouseId = id;
+  document.getElementById('modal-house-title').textContent = '집 후보 수정';
+  document.getElementById('f-region').value = h.region || '';
+  document.getElementById('f-deposit').value = h.deposit || '';
+  document.getElementById('f-area').value = h.area || '';
+  document.getElementById('f-rooms').value = h.rooms || '';
+  document.getElementById('f-bathrooms').value = h.bathrooms || '';
+  document.getElementById('f-monthly').value = h.monthly_cost || '';
+  document.getElementById('f-link').value = h.link || '';
+  document.getElementById('f-status').value = h.status || '관심';
+  document.getElementById('f-memo').value = h.memo || '';
+  openModal('modal-house');
+}
+
+async function submitHouse(e) {
+  e.preventDefault();
+  const body = {
+    region: document.getElementById('f-region').value,
+    deposit: parseInt(document.getElementById('f-deposit').value),
+    area: parseFloat(document.getElementById('f-area').value) || null,
+    rooms: parseInt(document.getElementById('f-rooms').value) || null,
+    bathrooms: parseInt(document.getElementById('f-bathrooms').value) || null,
+    monthly_cost: parseInt(document.getElementById('f-monthly').value) || null,
+    link: document.getElementById('f-link').value || null,
+    status: document.getElementById('f-status').value,
+    memo: document.getElementById('f-memo').value || null,
+  };
+  if (STATE.editHouseId) {
+    await api('PUT', `/houses/${STATE.editHouseId}`, body);
+  } else {
+    await api('POST', '/houses', body);
+  }
+  closeModal('modal-house');
+  await loadHouseList();
+}
+
+async function deleteHouse(id) {
+  if (!confirm('이 집을 목록에서 삭제할까요?')) return;
+  await api('DELETE', `/houses/${id}`);
+  showPage('list');
+}
+
+// ── Detail / Compare ─────────────────────────────────────────────────────────
+async function showDetail(id) {
+  STATE.currentHouseId = id;
+  const h = await api('GET', `/houses/${id}`);
+  document.getElementById('compare-title').textContent = h.region;
+  const dep = h.deposit ? h.deposit.toLocaleString() + '만' : '-';
+  const area = h.area ? h.area + '평' : '-';
+
+  let rows = STATE.items.map(item => {
+    const cols = STATE.users.map(u => {
+      const sc = (h.evaluations[u.id] || {})[item.id] || 0;
+      const w = (STATE.items.find(i=>i.id===item.id)?.weights || {})[u.id] || 3;
+      return `<td>${sc > 0 ? '⭐'.repeat(sc) : '-'}<br><small style="color:var(--muted)">${sc}×${w}</small></td>`;
+    }).join('');
+    return `<tr><td>${item.name}</td>${cols}</tr>`;
+  }).join('');
+
+  const totalCols = STATE.users.map(u => `<td>${h.scores[u.id] ?? 0}</td>`).join('');
+  const userHeaders = STATE.users.map(u => `<th>${u.name}</th>`).join('');
+
+  const content = `
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <div class="meta">보증금 ${dep} · ${area}</div>
+        <span class="status-badge status-${h.status}" style="margin-top:6px;display:inline-block;">${h.status}</span>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:22px;font-weight:800;color:var(--primary)">${h.combined_score}</div>
+        <div style="font-size:11px;color:var(--muted)">합산 점수</div>
+      </div>
+    </div>
+    ${h.monthly_cost ? `<div class="meta" style="margin-top:6px">월 고정비 약 ${h.monthly_cost}만원</div>` : ''}
+    ${h.memo ? `<div style="margin-top:8px;font-size:13px;color:var(--muted);white-space:pre-wrap">${h.memo}</div>` : ''}
+    ${h.link ? `<a href="${h.link}" target="_blank" style="display:block;margin-top:8px;color:var(--primary);font-size:13px">🔗 매물 링크</a>` : ''}
+  </div>
+
+  <div class="card">
+    <table class="compare-table">
+      <thead><tr><th>항목</th>${userHeaders}</tr></thead>
+      <tbody>
+        ${rows}
+        <tr class="total-row"><td>총점</td>${totalCols}</tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="flex-row">
+      <button class="btn btn-outline" onclick="openEval(${id})">✏️ 평가 입력</button>
+      <button class="btn btn-outline" onclick="openEditHouse(${id})">수정</button>
+    </div>
+    <button class="btn btn-danger" style="margin-top:8px;" onclick="deleteHouse(${id})">삭제</button>
+  </div>`;
+
+  document.getElementById('compare-content').innerHTML = content;
+  showPage('compare');
+}
+
+// ── Evaluation ───────────────────────────────────────────────────────────────
+async function openEval(houseId) {
+  STATE.currentHouseId = houseId;
+  const h = await api('GET', `/houses/${houseId}`);
+  STATE._evalData = h;
+  STATE.evalUserId = STATE.users[0].id;
+
+  document.getElementById('modal-eval-title').textContent = h.region + ' 평가';
+  renderEvalTabs();
+  renderEvalScores(h);
+  openModal('modal-eval');
+}
+
+function renderEvalTabs() {
+  const tabs = document.getElementById('eval-user-tabs');
+  tabs.innerHTML = STATE.users.map(u =>
+    `<button class="user-tab ${u.id === STATE.evalUserId ? 'active' : ''}" onclick="switchEvalUser(${u.id})">${u.name}</button>`
+  ).join('');
+}
+
+function switchEvalUser(userId) {
+  STATE.evalUserId = userId;
+  renderEvalTabs();
+  renderEvalScores(STATE._evalData);
+}
+
+function renderEvalScores(h) {
+  const uid = STATE.evalUserId;
+  const el = document.getElementById('eval-scores');
+  el.innerHTML = STATE.items.map(item => {
+    const current = (h.evaluations[uid] || {})[item.id] || 0;
+    const stars = [1,2,3,4,5].map(n =>
+      `<span class="star ${current >= n ? 'active' : ''}" onclick="setScore(${h.id},${uid},${item.id},${n},this)">${n <= current ? '★' : '☆'}</span>`
+    ).join('');
+    const w = (item.weights || {})[uid] || item.default_weight;
+    return `<div class="score-row">
+      <div class="score-label">${item.name}<br><small style="color:var(--muted)">가중치 ${w}</small></div>
+      <div class="score-stars" data-item="${item.id}">${stars}</div>
+      <div class="score-val" id="sv-${uid}-${item.id}">${current || '-'}</div>
+    </div>`;
+  }).join('');
+}
+
+async function setScore(houseId, userId, itemId, score, el) {
+  // Optimistic update
+  const container = el.closest('.score-stars');
+  const stars = container.querySelectorAll('.star');
+  stars.forEach((s, i) => {
+    s.classList.toggle('active', i < score);
+    s.textContent = i < score ? '★' : '☆';
+  });
+  document.getElementById(`sv-${userId}-${itemId}`).textContent = score;
+
+  // Update in-memory eval data
+  if (!STATE._evalData.evaluations[userId]) STATE._evalData.evaluations[userId] = {};
+  STATE._evalData.evaluations[userId][itemId] = score;
+
+  await api('PUT', `/houses/${houseId}/evaluations/${userId}/${itemId}`, {score});
+}
+
+// ── Settings ─────────────────────────────────────────────────────────────────
+function loadSettings() {
+  const el = document.getElementById('settings-content');
+  let html = '';
+  STATE.users.forEach(user => {
+    html += `<div class="section-title">${user.name}의 가중치</div><div class="card">`;
+    STATE.items.forEach(item => {
+      const w = (item.weights || {})[user.id] ?? item.default_weight;
+      html += `<div class="weight-row">
+        <div class="weight-label">${item.name}</div>
+        <input type="range" min="1" max="5" step="0.5" value="${w}"
+          oninput="updateWeight(${item.id},${user.id},this.value,this)"
+          onchange="saveWeight(${item.id},${user.id},this.value)">
+        <div class="weight-val" id="wv-${user.id}-${item.id}">${w}</div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  el.innerHTML = html;
+}
+
+function updateWeight(itemId, userId, val, inp) {
+  document.getElementById(`wv-${userId}-${itemId}`).textContent = val;
+  const item = STATE.items.find(i => i.id === itemId);
+  if (item) { if (!item.weights) item.weights = {}; item.weights[userId] = parseFloat(val); }
+}
+
+async function saveWeight(itemId, userId, val) {
+  await api('PUT', `/items/${itemId}/weights/${userId}`, {weight: parseFloat(val)});
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────────────
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
+});
+
+init();
+</script>
+</body>
+</html>
