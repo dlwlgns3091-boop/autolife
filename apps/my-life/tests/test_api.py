@@ -97,3 +97,76 @@ def test_monthly_summary():
     assert s["total_income"] >= 500000
     assert s["total_expense"] >= 30000
     assert s["balance"] == s["total_income"] - s["total_expense"]
+
+
+def test_todo_bulk_create():
+    cookies = auth()
+    items = [
+        {"title": "할일A", "priority": 1, "status": "pending", "due_date": "2026-07-01", "memo": "메모"},
+        {"title": "할일B", "priority": 3, "status": "pending", "due_date": None, "memo": None},
+        {"title": "할일C", "priority": 5, "status": "pending", "due_date": None, "memo": "테스트"},
+    ]
+    r = client.post("/api/todos/bulk", json={"items": items}, cookies=cookies)
+    assert r.status_code == 201
+    assert r.json()["created"] == 3
+
+    r = client.get("/api/todos", cookies=cookies)
+    titles = [t["title"] for t in r.json()]
+    assert "할일A" in titles
+    assert "할일B" in titles
+    assert "할일C" in titles
+
+
+def test_todo_bulk_requires_auth():
+    from fastapi.testclient import TestClient as _TC
+    fresh = _TC(app, cookies={})
+    r = fresh.post("/api/todos/bulk", json={"items": [{"title": "x"}]})
+    assert r.status_code == 401
+
+
+def test_todo_bulk_empty_returns_400():
+    cookies = auth()
+    r = client.post("/api/todos/bulk", json={"items": []}, cookies=cookies)
+    assert r.status_code == 400
+
+
+def test_budget_bulk_create_with_auto_category():
+    cookies = auth()
+    items = [
+        {"date": "2026-06-15", "amount": 12000, "category_name": "식비_벌크테스트", "entry_type": "expense", "memo": "점심"},
+        {"date": "2026-06-16", "amount": 300000, "category_name": None, "entry_type": "income", "memo": "급여"},
+        {"date": "2026-06-17", "amount": 5000, "category_name": "교통비_벌크테스트", "entry_type": "expense", "memo": None},
+    ]
+    r = client.post("/api/budget/bulk", json={"items": items}, cookies=cookies)
+    assert r.status_code == 201
+    assert r.json()["created"] == 3
+
+    # auto-created category should exist
+    cats = client.get("/api/budget/categories", cookies=cookies).json()
+    cat_names = [c["name"] for c in cats]
+    assert "식비_벌크테스트" in cat_names
+    assert "교통비_벌크테스트" in cat_names
+
+
+def test_budget_bulk_reuses_existing_category():
+    cookies = auth()
+    # create category first
+    client.post("/api/budget/categories", json={"name": "재사용분류_테스트"}, cookies=cookies)
+    cats_before = client.get("/api/budget/categories", cookies=cookies).json()
+    count_before = len([c for c in cats_before if c["name"] == "재사용분류_테스트"])
+
+    items = [
+        {"date": "2026-06-18", "amount": 8000, "category_name": "재사용분류_테스트", "entry_type": "expense", "memo": None},
+    ]
+    r = client.post("/api/budget/bulk", json={"items": items}, cookies=cookies)
+    assert r.status_code == 201
+
+    cats_after = client.get("/api/budget/categories", cookies=cookies).json()
+    count_after = len([c for c in cats_after if c["name"] == "재사용분류_테스트"])
+    assert count_after == count_before  # no duplicate created
+
+
+def test_budget_bulk_empty_returns_400():
+    cookies = auth()
+    r = client.post("/api/budget/bulk", json={"items": []}, cookies=cookies)
+    assert r.status_code == 400

@@ -104,6 +104,20 @@
   .section-title { font-size: .82rem; font-weight: 600; color: var(--sub); text-transform: uppercase; letter-spacing: .04em; margin-bottom: .6rem; }
   .empty-msg { text-align: center; color: var(--sub); padding: 2rem 0; font-size: .9rem; }
   .fab { position: fixed; bottom: 1.5rem; right: 1.5rem; width: 54px; height: 54px; border-radius: 50%; background: var(--primary); color: #fff; font-size: 1.6rem; border: none; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center; z-index: 150; }
+
+  /* ── Bulk Paste ── */
+  .bulk-section { margin-bottom: .75rem; }
+  .bulk-toggle { width: 100%; text-align: left; padding: .6rem .75rem; background: var(--card); border: 1px solid var(--border); border-radius: 10px; cursor: pointer; font-size: .88rem; color: var(--primary); display: flex; justify-content: space-between; align-items: center; font-weight: 500; }
+  .bulk-content { background: var(--card); border: 1px solid var(--border); border-top: none; border-radius: 0 0 10px 10px; padding: 1rem; display: none; }
+  .bulk-content.open { display: block; }
+  .bulk-header-row { display: flex; align-items: center; gap: .5rem; margin-bottom: .5rem; }
+  .copy-msg { font-size: .78rem; color: var(--success); display: none; }
+  .bulk-preview { margin-top: .75rem; overflow-x: auto; }
+  .bulk-preview table { width: 100%; border-collapse: collapse; font-size: .8rem; }
+  .bulk-preview th { background: var(--bg); padding: .3rem .5rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  .bulk-preview td { padding: .3rem .5rem; border-bottom: 1px solid var(--border); word-break: break-word; }
+  .bulk-preview .err-row td { color: var(--danger); background: #fff3f3; }
+  .bulk-count { font-size: .82rem; color: var(--sub); margin-bottom: .4rem; }
 </style>
 </head>
 <body>
@@ -139,6 +153,23 @@
       <button class="filter-btn" data-filter="week" onclick="setTodoFilter('week')">이번 주</button>
       <button class="filter-btn" data-filter="done" onclick="setTodoFilter('done')">완료</button>
     </div>
+    <!-- Bulk Paste: Todo -->
+    <div class="bulk-section">
+      <button class="bulk-toggle" onclick="toggleBulk('todo')">
+        <span>여러 할일 한번에 추가</span><span id="bulk-todo-arrow">▼</span>
+      </button>
+      <div class="bulk-content" id="bulk-todo-content">
+        <div class="bulk-header-row">
+          <button class="btn btn-sm btn-outline" onclick="copyAiFormat('todo')">AI용 양식 복사</button>
+          <span id="copy-todo-msg" class="copy-msg">복사됨!</span>
+        </div>
+        <label>한 줄에 하나 (제목 | 우선순위 | 마감 | 메모)</label>
+        <textarea id="bulk-todo-input" rows="5" placeholder="집 청소 | 2 | 2026-07-01 | 거실 포함&#10;보고서 작성 | 1 | 2026-06-20&#10;운동하기"></textarea>
+        <button class="btn btn-sm btn-primary" style="margin-top:.5rem;width:100%" onclick="previewBulkTodo()">미리보기</button>
+        <div id="bulk-todo-preview" class="bulk-preview" style="display:none"></div>
+      </div>
+    </div>
+
     <div id="todo-list"></div>
     <div class="empty-msg" id="todo-empty" style="display:none">할일이 없습니다</div>
   </div>
@@ -157,6 +188,24 @@
     </div>
     <div id="cat-summary" class="card" style="margin-bottom:.75rem"></div>
     <div class="section-title">내역</div>
+
+    <!-- Bulk Paste: Budget -->
+    <div class="bulk-section">
+      <button class="bulk-toggle" onclick="toggleBulk('budget')">
+        <span>여러 지출 한번에 추가</span><span id="bulk-budget-arrow">▼</span>
+      </button>
+      <div class="bulk-content" id="bulk-budget-content">
+        <div class="bulk-header-row">
+          <button class="btn btn-sm btn-outline" onclick="copyAiFormat('budget')">AI용 양식 복사</button>
+          <span id="copy-budget-msg" class="copy-msg">복사됨!</span>
+        </div>
+        <label>한 줄에 하나 (날짜 | 금액 | 분류 | 수입or지출 | 메모)</label>
+        <textarea id="bulk-budget-input" rows="5" placeholder="2026-06-15 | 15000 | 식비 | 지출 | 점심&#10;2026-06-16 | 500000 | 급여 | 수입&#10;2026-06-17 | 3000 | 교통비"></textarea>
+        <button class="btn btn-sm btn-primary" style="margin-top:.5rem;width:100%" onclick="previewBulkBudget()">미리보기</button>
+        <div id="bulk-budget-preview" class="bulk-preview" style="display:none"></div>
+      </div>
+    </div>
+
     <div id="budget-list"></div>
     <div class="empty-msg" id="budget-empty" style="display:none">내역이 없습니다</div>
   </div>
@@ -474,6 +523,138 @@ async function addCategory() {
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 function formatKRW(n) { return n.toLocaleString('ko-KR') + '원'; }
 function statusLabel(s) { return {pending:'대기',in_progress:'진행중',done:'완료'}[s]||s; }
+
+// ── Bulk Paste ────────────────────────────────────────────────────────────────
+function toggleBulk(tab) {
+  const content = $(`bulk-${tab}-content`);
+  const arrow = $(`bulk-${tab}-arrow`);
+  const isOpen = content.classList.contains('open');
+  content.classList.toggle('open', !isOpen);
+  arrow.textContent = isOpen ? '▼' : '▲';
+}
+
+function copyAiFormat(tab) {
+  const text = tab === 'todo'
+    ? '내 할 일들을 아래 양식으로 정리해줘. 한 줄에 하나씩, 파이프(|)로 구분:\n제목 | 우선순위(1~5) | 마감(YYYY-MM-DD) | 메모\n(뒤 항목은 모르면 생략 가능)'
+    : '내 지출 내역을 아래 양식으로 정리해줘. 한 줄에 하나씩, 파이프(|)로 구분:\n날짜(YYYY-MM-DD) | 금액 | 분류 | 수입or지출 | 메모';
+  navigator.clipboard.writeText(text).then(() => {
+    const msg = $(`copy-${tab}-msg`);
+    msg.style.display = 'inline';
+    setTimeout(() => { msg.style.display = 'none'; }, 2000);
+  });
+}
+
+function parseTodoLines(raw) {
+  return raw.split('\n').map(l => l.trim()).filter(l => l).map((line, i) => {
+    const parts = line.split('|').map(p => p.trim());
+    const title = parts[0];
+    if (!title) return { _error: `줄 ${i+1}: 제목 없음`, _raw: line };
+    let priority = 3;
+    if (parts[1]) {
+      const p = parseInt(parts[1]);
+      if (isNaN(p) || p < 1 || p > 5) return { _error: `줄 ${i+1}: 우선순위는 1~5 숫자`, _raw: line };
+      priority = p;
+    }
+    let due_date = null;
+    if (parts[2]) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(parts[2])) return { _error: `줄 ${i+1}: 마감일 형식 오류 (YYYY-MM-DD)`, _raw: line };
+      due_date = parts[2];
+    }
+    const memo = parts[3] || null;
+    return { title, priority, status: 'pending', due_date, memo };
+  });
+}
+
+function parseBudgetLines(raw) {
+  return raw.split('\n').map(l => l.trim()).filter(l => l).map((line, i) => {
+    const parts = line.split('|').map(p => p.trim());
+    if (!parts[0] || !/^\d{4}-\d{2}-\d{2}$/.test(parts[0])) return { _error: `줄 ${i+1}: 날짜 형식 오류 (YYYY-MM-DD)`, _raw: line };
+    if (!parts[1]) return { _error: `줄 ${i+1}: 금액 없음`, _raw: line };
+    const amount = parseInt(parts[1].replace(/,/g, ''));
+    if (isNaN(amount) || amount <= 0) return { _error: `줄 ${i+1}: 금액 오류 (양수 정수)`, _raw: line };
+    const category_name = parts[2] || null;
+    const typeRaw = (parts[3] || '').trim();
+    const entry_type = (typeRaw === '수입' || typeRaw === 'income') ? 'income' : 'expense';
+    const memo = parts[4] || null;
+    return { date: parts[0], amount, category_name, entry_type, memo };
+  });
+}
+
+function renderBulkPreview(items, columns, previewEl, confirmFn) {
+  const valid = items.filter(i => !i._error);
+  const errCount = items.length - valid.length;
+  let html = `<div class="bulk-count">총 ${items.length}줄 · 유효 <strong>${valid.length}건</strong>${errCount ? ` · 오류 <span style="color:var(--danger)">${errCount}건</span>` : ''}</div>`;
+  html += `<table><tr>${columns.map(c=>`<th>${c.label}</th>`).join('')}</tr>`;
+  items.forEach(item => {
+    if (item._error) {
+      html += `<tr class="err-row"><td colspan="${columns.length}">⚠ ${esc(item._error)}</td></tr>`;
+    } else {
+      html += `<tr>${columns.map(c => `<td>${esc(String(c.fn(item)||''))}</td>`).join('')}</tr>`;
+    }
+  });
+  html += '</table>';
+  if (valid.length > 0) {
+    html += `<button class="btn btn-primary" style="margin-top:.75rem;width:100%" onclick="${confirmFn}()">✔ ${valid.length}건 등록 확정</button>`;
+  }
+  previewEl.innerHTML = html;
+  previewEl.style.display = '';
+}
+
+function previewBulkTodo() {
+  const items = parseTodoLines($('bulk-todo-input').value);
+  if (!items.length) return;
+  const cols = [
+    { label: '제목', fn: i => i.title },
+    { label: '우선순위', fn: i => i.priority },
+    { label: '마감', fn: i => i.due_date || '' },
+    { label: '메모', fn: i => i.memo || '' },
+  ];
+  renderBulkPreview(items, cols, $('bulk-todo-preview'), 'confirmBulkTodo');
+}
+
+async function confirmBulkTodo() {
+  const items = parseTodoLines($('bulk-todo-input').value).filter(i => !i._error);
+  if (!items.length) return;
+  const r = await fetch('/api/todos/bulk', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({items}) });
+  if (r.ok) {
+    const d = await r.json();
+    alert(`${d.created}건 등록되었습니다`);
+    $('bulk-todo-input').value = '';
+    $('bulk-todo-preview').style.display = 'none';
+    loadTodos();
+  } else {
+    alert('등록 실패');
+  }
+}
+
+function previewBulkBudget() {
+  const items = parseBudgetLines($('bulk-budget-input').value);
+  if (!items.length) return;
+  const cols = [
+    { label: '날짜', fn: i => i.date },
+    { label: '금액', fn: i => i.amount.toLocaleString('ko-KR') },
+    { label: '분류', fn: i => i.category_name || '미분류' },
+    { label: '구분', fn: i => i.entry_type === 'income' ? '수입' : '지출' },
+    { label: '메모', fn: i => i.memo || '' },
+  ];
+  renderBulkPreview(items, cols, $('bulk-budget-preview'), 'confirmBulkBudget');
+}
+
+async function confirmBulkBudget() {
+  const items = parseBudgetLines($('bulk-budget-input').value).filter(i => !i._error);
+  if (!items.length) return;
+  const r = await fetch('/api/budget/bulk', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({items}) });
+  if (r.ok) {
+    const d = await r.json();
+    alert(`${d.created}건 등록되었습니다`);
+    $('bulk-budget-input').value = '';
+    $('bulk-budget-preview').style.display = 'none';
+    loadBudget();
+    loadCategories();
+  } else {
+    alert('등록 실패');
+  }
+}
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 checkAuth();

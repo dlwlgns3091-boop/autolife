@@ -81,3 +81,28 @@ class MonthlySummary(BaseModel):
     total_expense: int
     balance: int
     by_category: list[dict]
+
+
+# ── Bulk Create ───────────────────────────────────────────────────────────────
+class TodoBulkItem(BaseModel):
+    title: str
+    priority: int = 3
+    status: str = "pending"
+    due_date: Optional[date] = None
+    memo: Optional[str] = None
+
+
+class TodoBulkCreate(BaseModel):
+    items: list[TodoBulkItem]
+
+
+class BudgetBulkItem(BaseModel):
+    date: date
+    amount: int
+    category_name: Optional[str] = None
+    entry_type: str = "expense"
+    memo: Optional[str] = None
+
+
+class BudgetBulkCreate(BaseModel):
+    items: list[BudgetBulkItem]
