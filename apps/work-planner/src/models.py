@@ -27,6 +27,7 @@ class Task(Base):
     deadline = Column(Date, nullable=True)
     recurrence = Column(String(20), nullable=True)  # daily / weekly / None
     memo = Column(Text, nullable=True)
+    task_source = Column(String(10), default="직접")  # 직접 / 반복
     created_at = Column(DateTime, default=utcnow)
     updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
     category = relationship("TaskCategory", back_populates="tasks")

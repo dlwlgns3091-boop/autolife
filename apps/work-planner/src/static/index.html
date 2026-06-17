@@ -45,9 +45,15 @@ a { color: var(--primary); }
 .stat.in-progress .stat-num { color: var(--primary); }
 
 /* Top task */
-.top-task { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
-.top-task-label { font-size: 11px; opacity: .8; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
-.top-task-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+.top-task-wrap { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
+.top-task-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.top-task-label { font-size: 11px; opacity: .8; text-transform: uppercase; letter-spacing: .05em; }
+.top-count-btns { display: flex; gap: 4px; }
+.top-count-btn { padding: 2px 8px; border: 1px solid rgba(255,255,255,.5); background: transparent; color: #fff; border-radius: 12px; font-size: 11px; cursor: pointer; transition: all .15s; }
+.top-count-btn.active { background: rgba(255,255,255,.3); border-color: #fff; font-weight: 700; }
+.top-task-item { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,.2); }
+.top-task-item:last-child { border-bottom: none; padding-bottom: 0; }
+.top-task-title { font-size: 16px; font-weight: 700; margin-bottom: 2px; }
 .top-task-meta { font-size: 12px; opacity: .85; }
 
 /* Templates */
@@ -69,6 +75,7 @@ a { color: var(--primary); }
 .task-body { flex: 1; min-width: 0; }
 .task-title { font-weight: 600; font-size: 14px; word-break: break-word; }
 .task-title.overdue { color: var(--danger); }
+.clinic-prefix { color: var(--primary); font-weight: 700; margin-right: 2px; }
 .task-meta { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; align-items: center; }
 .badge { font-size: 11px; padding: 2px 7px; border-radius: 10px; background: #e0e7ff; color: var(--primary); }
 .badge.overdue { background: #fee2e2; color: var(--danger); }
@@ -76,6 +83,8 @@ a { color: var(--primary); }
 .badge.status-in_progress { background: #fef3c7; color: #92400e; }
 .badge.status-done { background: #dcfce7; color: #166534; }
 .badge.recur { background: #f0fdf4; color: #166534; }
+.badge.source-반복 { background: #dbeafe; color: #1d4ed8; font-weight: 600; }
+.badge.source-직접 { background: #f1f5f9; color: var(--muted); }
 .task-actions { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
 .icon-btn { width: 30px; height: 30px; border: 1px solid var(--border); background: var(--card); border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
 .icon-btn:hover { background: var(--bg); }
@@ -170,6 +179,11 @@ a { color: var(--primary); }
       <button class="filter-btn" data-filter="week" onclick="setFilter('week')">이번 주</button>
       <button class="filter-btn" data-filter="overdue" onclick="setFilter('overdue')">기한 초과</button>
     </div>
+    <div class="filters" id="source-filters">
+      <button class="filter-btn active" data-source="" onclick="setSourceFilter('')">전체</button>
+      <button class="filter-btn" data-source="반복" onclick="setSourceFilter('반복')">반복만</button>
+      <button class="filter-btn" data-source="직접" onclick="setSourceFilter('직접')">직접만</button>
+    </div>
     <div id="cat-filters" class="filters" style="margin-top:-6px"></div>
     <div class="ai-export-bar">
       <button class="btn btn-secondary btn-sm" onclick="copyAiAdvice()">🤖 AI에게 조언받기</button>
@@ -179,6 +193,11 @@ a { color: var(--primary); }
 
   <!-- DONE -->
   <div id="view-done" class="hidden">
+    <div class="filters" id="done-source-filters">
+      <button class="filter-btn active" data-source="" onclick="setDoneSourceFilter('')">전체</button>
+      <button class="filter-btn" data-source="반복" onclick="setDoneSourceFilter('반복')">반복만</button>
+      <button class="filter-btn" data-source="직접" onclick="setDoneSourceFilter('직접')">직접만</button>
+    </div>
     <div id="done-list"><div class="empty">완료된 업무가 없습니다.</div></div>
   </div>
 
@@ -229,7 +248,7 @@ a { color: var(--primary); }
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>업무 종류</label>
+        <label>업무 종류 (치과명)</label>
         <select id="t-category"><option value="">-- 선택 없음 --</option></select>
       </div>
       <div class="form-group">
@@ -285,7 +304,7 @@ a { color: var(--primary); }
     <h2 id="cat-modal-title">업무 종류 추가</h2>
     <div class="form-group">
       <label>이름</label>
-      <input id="cat-name" type="text" placeholder="예: 증례, 블로그, 회의">
+      <input id="cat-name" type="text" placeholder="예: 서울바른치과, 강남미소치과">
     </div>
     <div class="modal-btns">
       <button class="btn btn-secondary" onclick="closeModal('cat-modal-overlay')">취소</button>
@@ -304,7 +323,7 @@ a { color: var(--primary); }
     </div>
     <div class="form-row">
       <div class="form-group">
-        <label>업무 종류</label>
+        <label>업무 종류 (치과명)</label>
         <select id="tpl-category"><option value="">-- 선택 없음 --</option></select>
       </div>
       <div class="form-group">
@@ -334,6 +353,9 @@ const API = '';
 let currentTab = 'dashboard';
 let currentFilter = localStorage.getItem('wp_filter') || '';
 let currentCatFilter = localStorage.getItem('wp_cat_filter') ? parseInt(localStorage.getItem('wp_cat_filter')) : null;
+let currentSourceFilter = localStorage.getItem('wp_source_filter') || '';
+let currentDoneSourceFilter = localStorage.getItem('wp_done_source_filter') || '';
+let topCount = parseInt(localStorage.getItem('wp_top_count') || '3');
 let editingTaskId = null;
 let editingCatId = null;
 let editingTplId = null;
@@ -375,9 +397,9 @@ function showTab(tab) {
 
 // ---- DASHBOARD ----
 async function loadDashboard() {
-  const [summary, top, tpls, cats] = await Promise.all([
+  const [summary, tops, tpls, cats] = await Promise.all([
     api('GET','/tasks/summary'),
-    api('GET','/tasks/top'),
+    api('GET',`/tasks/top-many?limit=${topCount}`),
     api('GET','/templates'),
     api('GET','/categories'),
   ]);
@@ -391,17 +413,37 @@ async function loadDashboard() {
   `;
 
   const topEl = document.getElementById('top-task-section');
-  if (top) {
-    const dl = top.deadline ? ` · 마감 ${top.deadline.slice(5)}` : '';
-    const cat = top.category_name ? ` · ${top.category_name}` : '';
+  const countBtns = [1,3,5].map(n =>
+    `<button class="top-count-btn${topCount===n?' active':''}" onclick="setTopCount(${n})">${n}</button>`
+  ).join('');
+
+  if (tops && tops.length > 0) {
+    const items = tops.map(t => {
+      const dl = t.deadline ? ` · 마감 ${t.deadline.slice(5)}` : '';
+      const cat = t.category_name ? ` · ${t.category_name}` : '';
+      const clinic = t.category_name ? `[${esc(t.category_name)}] ` : '';
+      return `<div class="top-task-item">
+        <div class="top-task-title">${clinic}${esc(t.title)}</div>
+        <div class="top-task-meta">우선순위 ${t.priority}${cat}${dl}</div>
+      </div>`;
+    }).join('');
     topEl.innerHTML = `
-      <div class="top-task">
-        <div class="top-task-label">⚡ 지금 할 일</div>
-        <div class="top-task-title">${esc(top.title)}</div>
-        <div class="top-task-meta">우선순위 ${top.priority}${cat}${dl}</div>
+      <div class="top-task-wrap">
+        <div class="top-task-header">
+          <div class="top-task-label">⚡ 지금 할 일</div>
+          <div class="top-count-btns">${countBtns}</div>
+        </div>
+        ${items}
       </div>`;
   } else {
-    topEl.innerHTML = '';
+    topEl.innerHTML = `
+      <div class="top-task-wrap">
+        <div class="top-task-header">
+          <div class="top-task-label">⚡ 지금 할 일</div>
+          <div class="top-count-btns">${countBtns}</div>
+        </div>
+        <div style="font-size:14px;opacity:.8">할 일이 없습니다 🎉</div>
+      </div>`;
   }
 
   const row = document.getElementById('templates-row');
@@ -414,10 +456,16 @@ async function loadDashboard() {
   }
 }
 
+function setTopCount(n) {
+  topCount = n;
+  localStorage.setItem('wp_top_count', n);
+  loadDashboard();
+}
+
 async function createFromTemplate(id, title) {
   try {
     await api('POST', `/templates/${id}/create-task`);
-    toast(`✅ "${title}" 업무 생성됨`);
+    toast(`✅ "${title}" 업무 생성됨 (반복)`);
     loadDashboard();
   } catch(e) { toast('오류: ' + e.message); }
 }
@@ -426,9 +474,14 @@ async function createFromTemplate(id, title) {
 async function loadTasks() {
   categories = await api('GET','/categories');
   renderCatFilters();
+  // restore source filter button state
+  document.querySelectorAll('#source-filters .filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.source === currentSourceFilter);
+  });
   let url = '/tasks?';
   if (currentFilter) url += `filter=${currentFilter}&`;
   if (currentCatFilter) url += `category_id=${currentCatFilter}&`;
+  if (currentSourceFilter) url += `source=${encodeURIComponent(currentSourceFilter)}&`;
   tasks = await api('GET', url);
   renderTaskList('task-list', tasks, false);
 }
@@ -449,6 +502,24 @@ function setFilter(f) {
   loadTasks();
 }
 
+function setSourceFilter(s) {
+  currentSourceFilter = s;
+  localStorage.setItem('wp_source_filter', s);
+  document.querySelectorAll('#source-filters .filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.source === s);
+  });
+  loadTasks();
+}
+
+function setDoneSourceFilter(s) {
+  currentDoneSourceFilter = s;
+  localStorage.setItem('wp_done_source_filter', s);
+  document.querySelectorAll('#done-source-filters .filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.source === s);
+  });
+  loadDone();
+}
+
 function setCatFilter(id) {
   currentCatFilter = id;
   if (id) localStorage.setItem('wp_cat_filter', id);
@@ -457,7 +528,13 @@ function setCatFilter(id) {
 }
 
 async function loadDone() {
-  const done = await api('GET','/tasks?filter=done');
+  // restore done source filter button state
+  document.querySelectorAll('#done-source-filters .filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.source === currentDoneSourceFilter);
+  });
+  let url = '/tasks?filter=done';
+  if (currentDoneSourceFilter) url += `&source=${encodeURIComponent(currentDoneSourceFilter)}`;
+  const done = await api('GET', url);
   renderTaskList('done-list', done, true);
 }
 
@@ -473,6 +550,10 @@ function renderTask(t, isDone) {
   const catLabel = t.category_name ? `<span class="badge">${esc(t.category_name)}</span>` : '';
   const recurLabel = t.recurrence ? `<span class="badge recur">${t.recurrence==='daily'?'매일':'매주'}</span>` : '';
   const statusLabel = `<span class="badge status-${t.status}">${{pending:'대기',in_progress:'진행중',done:'완료'}[t.status]}</span>`;
+  const sourceLabel = `<span class="badge source-${t.task_source}">[${esc(t.task_source || '직접')}]</span>`;
+
+  // 치과명 prefix
+  const clinicPrefix = t.category_name ? `<span class="clinic-prefix">[${esc(t.category_name)}]</span>` : '';
 
   const priorityOpts = [1,2,3,4,5].map(p =>
     `<option value="${p}"${t.priority===p?' selected':''}>${p}</option>`
@@ -484,8 +565,8 @@ function renderTask(t, isDone) {
   return `<div class="task-item" id="task-${t.id}">
     <div class="task-check${checkClass}" onclick="toggleDone(${t.id},'${t.status}')" title="완료 체크">${checkIcon}</div>
     <div class="task-body">
-      <div class="task-title${isOverdue?' overdue':''}">${esc(t.title)}</div>
-      <div class="task-meta">${statusLabel}${catLabel}${dlLabel}${recurLabel}</div>
+      <div class="task-title${isOverdue?' overdue':''}">${clinicPrefix}${esc(t.title)}</div>
+      <div class="task-meta">${statusLabel}${sourceLabel}${catLabel}${dlLabel}${recurLabel}</div>
     </div>
     <div class="task-actions">
       <select class="priority-select" onchange="quickPriority(${t.id},this.value)" title="우선순위">${priorityOpts}</select>
@@ -526,9 +607,9 @@ async function copyAiAdvice() {
   let url = '/tasks?';
   if (currentFilter) url += `filter=${currentFilter}&`;
   if (currentCatFilter) url += `category_id=${currentCatFilter}&`;
+  if (currentSourceFilter) url += `source=${encodeURIComponent(currentSourceFilter)}&`;
   const list = await api('GET', url);
   if (!list.length) { toast('업무가 없습니다.'); return; }
-  const d = today.slice(5).replace('-','-');
   const lines = list.map((t,i) => {
     const parts = [t.title];
     if (t.category_name) parts.push(t.category_name);
@@ -635,7 +716,7 @@ async function submitBulk() {
   if (!text.trim()) { toast('내용을 입력하세요.'); return; }
   try {
     const res = await api('POST','/tasks/bulk',{text});
-    toast(`✅ ${res.length}개 업무가 등록되었습니다.`);
+    toast(`✅ ${res.length}개 업무가 등록되었습니다. (직접)`);
     closeModal('bulk-modal-overlay');
     if (currentTab === 'tasks') loadTasks();
     else loadDashboard();

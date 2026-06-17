@@ -45,6 +45,7 @@ class TaskOut(BaseModel):
     deadline: Optional[date] = None
     recurrence: Optional[str] = None
     memo: Optional[str] = None
+    task_source: str = "직접"
     model_config = {"from_attributes": True}
 
 class BulkTaskLine(BaseModel):
