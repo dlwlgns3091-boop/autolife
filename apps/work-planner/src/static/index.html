@@ -132,6 +132,9 @@ a { color: var(--primary); }
 .manage-item { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
 .manage-item:last-child { border-bottom: none; }
 .manage-item span { flex: 1; }
+
+/* Clinic name prefix */
+.clinic-tag { color: var(--primary); font-weight: 700; margin-right: 2px; }
 </style>
 </head>
 <body>
@@ -397,7 +400,7 @@ async function loadDashboard() {
     topEl.innerHTML = `
       <div class="top-task">
         <div class="top-task-label">⚡ 지금 할 일</div>
-        <div class="top-task-title">${esc(top.title)}</div>
+        <div class="top-task-title">${top.category_name ? `[${esc(top.category_name)}] ` : ''}${esc(top.title)}</div>
         <div class="top-task-meta">우선순위 ${top.priority}${cat}${dl}</div>
       </div>`;
   } else {
@@ -484,7 +487,7 @@ function renderTask(t, isDone) {
   return `<div class="task-item" id="task-${t.id}">
     <div class="task-check${checkClass}" onclick="toggleDone(${t.id},'${t.status}')" title="완료 체크">${checkIcon}</div>
     <div class="task-body">
-      <div class="task-title${isOverdue?' overdue':''}">${esc(t.title)}</div>
+      <div class="task-title${isOverdue?' overdue':''}">${t.category_name ? `<span class="clinic-tag">[${esc(t.category_name)}]</span> ` : ''}${esc(t.title)}</div>
       <div class="task-meta">${statusLabel}${catLabel}${dlLabel}${recurLabel}</div>
     </div>
     <div class="task-actions">
