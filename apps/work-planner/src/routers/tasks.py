@@ -21,6 +21,7 @@ def _task_out(t: Task) -> TaskOut:
         deadline=t.deadline,
         recurrence=t.recurrence,
         memo=t.memo,
+        source=t.source or "직접",
     )
 
 
@@ -69,6 +70,7 @@ def get_top_task(db: Session = Depends(get_db)):
 def list_tasks(
     filter: Optional[str] = Query(None),  # today / week / overdue / done
     category_id: Optional[int] = Query(None),
+    source: Optional[str] = Query(None),  # 반복 / 직접
     db: Session = Depends(get_db),
 ):
     today = date.today()
@@ -76,6 +78,8 @@ def list_tasks(
 
     if filter == "done":
         q = q.filter(Task.status == "done")
+        if source in ("반복", "직접"):
+            q = q.filter(Task.source == source)
         return [_task_out(t) for t in q.order_by(Task.updated_at.desc()).all()]
 
     q = q.filter(Task.status != "done")
@@ -91,6 +95,9 @@ def list_tasks(
 
     if category_id:
         q = q.filter(Task.category_id == category_id)
+
+    if source in ("반복", "직접"):
+        q = q.filter(Task.source == source)
 
     q = _sorted_incomplete(q)
     return [_task_out(t) for t in q.all()]
@@ -134,6 +141,7 @@ def bulk_create(data: BulkCreateRequest, db: Session = Depends(get_db)):
             deadline=line.deadline,
             memo=line.memo,
             status="pending",
+            source="직접",
         )
         db.add(t)
         db.flush()

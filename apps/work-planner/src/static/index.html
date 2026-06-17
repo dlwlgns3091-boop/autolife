@@ -76,6 +76,8 @@ a { color: var(--primary); }
 .badge.status-in_progress { background: #fef3c7; color: #92400e; }
 .badge.status-done { background: #dcfce7; color: #166534; }
 .badge.recur { background: #f0fdf4; color: #166534; }
+.badge.source-반복 { background: #fef3c7; color: #92400e; font-size: 10px; }
+.badge.source-직접 { background: #f1f5f9; color: var(--muted); font-size: 10px; }
 .task-actions { display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
 .icon-btn { width: 30px; height: 30px; border: 1px solid var(--border); background: var(--card); border-radius: 8px; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; }
 .icon-btn:hover { background: var(--bg); }
@@ -169,6 +171,11 @@ a { color: var(--primary); }
       <button class="filter-btn" data-filter="today" onclick="setFilter('today')">오늘</button>
       <button class="filter-btn" data-filter="week" onclick="setFilter('week')">이번 주</button>
       <button class="filter-btn" data-filter="overdue" onclick="setFilter('overdue')">기한 초과</button>
+    </div>
+    <div class="filters" id="source-filters" style="margin-top:-6px">
+      <button class="filter-btn active" data-source="" onclick="setSourceFilter('')">전체</button>
+      <button class="filter-btn" data-source="반복" onclick="setSourceFilter('반복')">반복만</button>
+      <button class="filter-btn" data-source="직접" onclick="setSourceFilter('직접')">직접만</button>
     </div>
     <div id="cat-filters" class="filters" style="margin-top:-6px"></div>
     <div class="ai-export-bar">
@@ -334,6 +341,7 @@ const API = '';
 let currentTab = 'dashboard';
 let currentFilter = localStorage.getItem('wp_filter') || '';
 let currentCatFilter = localStorage.getItem('wp_cat_filter') ? parseInt(localStorage.getItem('wp_cat_filter')) : null;
+let currentSourceFilter = localStorage.getItem('wp_source_filter') || '';
 let editingTaskId = null;
 let editingCatId = null;
 let editingTplId = null;
@@ -426,9 +434,11 @@ async function createFromTemplate(id, title) {
 async function loadTasks() {
   categories = await api('GET','/categories');
   renderCatFilters();
+  renderSourceFilters();
   let url = '/tasks?';
   if (currentFilter) url += `filter=${currentFilter}&`;
   if (currentCatFilter) url += `category_id=${currentCatFilter}&`;
+  if (currentSourceFilter) url += `source=${encodeURIComponent(currentSourceFilter)}&`;
   tasks = await api('GET', url);
   renderTaskList('task-list', tasks, false);
 }
@@ -456,6 +466,19 @@ function setCatFilter(id) {
   loadTasks();
 }
 
+function renderSourceFilters() {
+  document.querySelectorAll('#source-filters .filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.source === currentSourceFilter);
+  });
+}
+
+function setSourceFilter(s) {
+  currentSourceFilter = s;
+  if (s) localStorage.setItem('wp_source_filter', s);
+  else localStorage.removeItem('wp_source_filter');
+  loadTasks();
+}
+
 async function loadDone() {
   const done = await api('GET','/tasks?filter=done');
   renderTaskList('done-list', done, true);
@@ -473,6 +496,8 @@ function renderTask(t, isDone) {
   const catLabel = t.category_name ? `<span class="badge">${esc(t.category_name)}</span>` : '';
   const recurLabel = t.recurrence ? `<span class="badge recur">${t.recurrence==='daily'?'매일':'매주'}</span>` : '';
   const statusLabel = `<span class="badge status-${t.status}">${{pending:'대기',in_progress:'진행중',done:'완료'}[t.status]}</span>`;
+  const src = t.source || '직접';
+  const sourceLabel = `<span class="badge source-${src}">[${src}]</span>`;
 
   const priorityOpts = [1,2,3,4,5].map(p =>
     `<option value="${p}"${t.priority===p?' selected':''}>${p}</option>`
@@ -485,7 +510,7 @@ function renderTask(t, isDone) {
     <div class="task-check${checkClass}" onclick="toggleDone(${t.id},'${t.status}')" title="완료 체크">${checkIcon}</div>
     <div class="task-body">
       <div class="task-title${isOverdue?' overdue':''}">${esc(t.title)}</div>
-      <div class="task-meta">${statusLabel}${catLabel}${dlLabel}${recurLabel}</div>
+      <div class="task-meta">${statusLabel}${catLabel}${dlLabel}${recurLabel}${sourceLabel}</div>
     </div>
     <div class="task-actions">
       <select class="priority-select" onchange="quickPriority(${t.id},this.value)" title="우선순위">${priorityOpts}</select>

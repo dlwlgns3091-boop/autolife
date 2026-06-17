@@ -31,6 +31,7 @@ def _task_out_from_task(t: Task) -> TaskOut:
         deadline=t.deadline,
         recurrence=t.recurrence,
         memo=t.memo,
+        source=t.source or "반복",
     )
 
 
@@ -84,6 +85,7 @@ def create_task_from_template(tpl_id: int, db: Session = Depends(get_db)):
         priority=tpl.default_priority,
         deadline=deadline,
         status="pending",
+        source="반복",
     )
     db.add(task)
     db.commit()

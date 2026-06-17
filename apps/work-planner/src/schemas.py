@@ -25,6 +25,7 @@ class TaskCreate(BaseModel):
     deadline: Optional[date] = None
     recurrence: Optional[str] = None  # daily / weekly
     memo: Optional[str] = None
+    source: Optional[str] = "직접"  # 반복 / 직접
 
 class TaskUpdate(BaseModel):
     title: Optional[str] = None
@@ -34,6 +35,7 @@ class TaskUpdate(BaseModel):
     deadline: Optional[date] = None
     recurrence: Optional[str] = None
     memo: Optional[str] = None
+    source: Optional[str] = None
 
 class TaskOut(BaseModel):
     id: int
@@ -45,6 +47,7 @@ class TaskOut(BaseModel):
     deadline: Optional[date] = None
     recurrence: Optional[str] = None
     memo: Optional[str] = None
+    source: Optional[str] = None
     model_config = {"from_attributes": True}
 
 class BulkTaskLine(BaseModel):

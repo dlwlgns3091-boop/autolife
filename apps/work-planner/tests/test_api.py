@@ -170,6 +170,57 @@ def test_create_task_from_template():
     assert d["deadline"] is not None
 
 
+# --- Source distinction ---
+def test_create_task_default_source_is_직접():
+    r = client.post("/tasks", json={"title": "직접 추가 업무"})
+    assert r.status_code == 201
+    assert r.json()["source"] == "직접"
+
+
+def test_bulk_create_source_is_직접():
+    r = client.post("/tasks/bulk", json={"text": "일괄업무A | | 3"})
+    assert r.status_code == 201
+    assert r.json()[0]["source"] == "직접"
+
+
+def test_template_task_source_is_반복():
+    tpl = client.post("/templates", json={"title": "반복 업무", "default_priority": 3}).json()
+    r = client.post(f"/templates/{tpl['id']}/create-task")
+    assert r.status_code == 201
+    assert r.json()["source"] == "반복"
+
+
+def test_source_filter_반복():
+    tpl = client.post("/templates", json={"title": "반복템플릿", "default_priority": 3}).json()
+    client.post(f"/templates/{tpl['id']}/create-task")
+    client.post("/tasks", json={"title": "직접업무"})
+
+    r = client.get("/tasks?source=반복")
+    items = r.json()
+    assert all(t["source"] == "반복" for t in items)
+    assert len(items) == 1
+
+
+def test_source_filter_직접():
+    tpl = client.post("/templates", json={"title": "반복템플릿2", "default_priority": 3}).json()
+    client.post(f"/templates/{tpl['id']}/create-task")
+    client.post("/tasks", json={"title": "직접업무2"})
+
+    r = client.get("/tasks?source=직접")
+    items = r.json()
+    assert all(t["source"] == "직접" for t in items)
+    assert len(items) == 1
+
+
+def test_source_filter_전체():
+    tpl = client.post("/templates", json={"title": "반복템플릿3", "default_priority": 3}).json()
+    client.post(f"/templates/{tpl['id']}/create-task")
+    client.post("/tasks", json={"title": "직접업무3"})
+
+    r = client.get("/tasks")
+    assert len(r.json()) == 2
+
+
 def test_top_task():
     client.post("/tasks", json={"title": "낮음", "priority": 1})
     client.post("/tasks", json={"title": "높음", "priority": 5})

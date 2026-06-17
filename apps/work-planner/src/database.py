@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 DATABASE_URL = "sqlite:///./work_planner.db"
@@ -14,3 +14,15 @@ def get_db():
         yield db
     finally:
         db.close()
+
+
+def run_migrations():
+    """Apply incremental schema changes without dropping existing data."""
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("ALTER TABLE tasks ADD COLUMN source VARCHAR(10) DEFAULT '직접'"))
+            conn.execute(text("UPDATE tasks SET source = '직접' WHERE source IS NULL"))
+            conn.commit()
+        except Exception:
+            # Column already exists — safe to ignore
+            pass
