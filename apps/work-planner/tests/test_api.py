@@ -71,6 +71,13 @@ def test_create_task_title_only():
     assert d["status"] == "pending"
 
 
+def test_create_task_defaults_to_direct():
+    r = client.post("/tasks", json={"title": "직접 추가 업무"})
+    assert r.status_code == 201
+    d = r.json()
+    assert d["task_source"] == "직접"
+
+
 def test_create_task_full():
     cat = client.post("/categories", json={"name": "회의"}).json()
     r = client.post("/tasks", json={
@@ -153,6 +160,13 @@ def test_bulk_create():
     assert items[1]["deadline"] == "2026-06-19"
 
 
+def test_bulk_create_sets_direct_source():
+    r = client.post("/tasks/bulk", json={"text": "일괄A | 블로그 | 3\n일괄B"})
+    assert r.status_code == 201
+    items = r.json()
+    assert all(item["task_source"] == "직접" for item in items)
+
+
 # --- Templates ---
 def test_create_template():
     r = client.post("/templates", json={"title": "일일 보고서", "default_priority": 4, "deadline_offset_days": 0})
@@ -170,9 +184,108 @@ def test_create_task_from_template():
     assert d["deadline"] is not None
 
 
+def test_template_task_source_is_recurring():
+    tpl = client.post("/templates", json={"title": "반복 업무 템플릿", "default_priority": 3}).json()
+    r = client.post(f"/templates/{tpl['id']}/create-task")
+    assert r.status_code == 201
+    assert r.json()["task_source"] == "반복"
+
+
 def test_top_task():
     client.post("/tasks", json={"title": "낮음", "priority": 1})
     client.post("/tasks", json={"title": "높음", "priority": 5})
     r = client.get("/tasks/top")
     assert r.status_code == 200
     assert r.json()["priority"] == 5
+
+
+# --- Top Many ---
+def test_top_many_default_limit():
+    for i in range(5):
+        client.post("/tasks", json={"title": f"업무{i}", "priority": i + 1})
+    r = client.get("/tasks/top-many")
+    assert r.status_code == 200
+    items = r.json()
+    assert len(items) == 3  # default limit=3
+
+
+def test_top_many_custom_limit():
+    for i in range(5):
+        client.post("/tasks", json={"title": f"업무{i}", "priority": i + 1})
+    r = client.get("/tasks/top-many?limit=5")
+    assert r.status_code == 200
+    assert len(r.json()) == 5
+
+
+def test_top_many_sorted_by_priority():
+    client.post("/tasks", json={"title": "낮음", "priority": 1})
+    client.post("/tasks", json={"title": "보통", "priority": 3})
+    client.post("/tasks", json={"title": "높음", "priority": 5})
+    r = client.get("/tasks/top-many?limit=3")
+    items = r.json()
+    priorities = [t["priority"] for t in items]
+    assert priorities == sorted(priorities, reverse=True)
+
+
+def test_top_many_excludes_done():
+    t = client.post("/tasks", json={"title": "완료된 업무", "priority": 5}).json()
+    client.patch(f"/tasks/{t['id']}/status?status=done")
+    client.post("/tasks", json={"title": "미완료 업무", "priority": 3})
+    r = client.get("/tasks/top-many?limit=5")
+    items = r.json()
+    assert all(item["status"] != "done" for item in items)
+
+
+# --- Source Filter ---
+def test_source_filter_direct():
+    client.post("/tasks", json={"title": "직접 추가"})
+    tpl = client.post("/templates", json={"title": "템플릿 업무", "default_priority": 3}).json()
+    client.post(f"/templates/{tpl['id']}/create-task")
+    r = client.get("/tasks?source=직접")
+    items = r.json()
+    assert all(t["task_source"] == "직접" for t in items)
+    assert len(items) == 1
+
+
+def test_source_filter_recurring():
+    client.post("/tasks", json={"title": "직접 추가"})
+    tpl = client.post("/templates", json={"title": "템플릿 업무", "default_priority": 3}).json()
+    client.post(f"/templates/{tpl['id']}/create-task")
+    r = client.get("/tasks?source=반복")
+    items = r.json()
+    assert all(t["task_source"] == "반복" for t in items)
+    assert len(items) == 1
+
+
+def test_source_filter_no_filter_returns_all():
+    client.post("/tasks", json={"title": "직접 추가"})
+    tpl = client.post("/templates", json={"title": "템플릿 업무", "default_priority": 3}).json()
+    client.post(f"/templates/{tpl['id']}/create-task")
+    r = client.get("/tasks")
+    assert len(r.json()) == 2
+
+
+def test_done_tasks_source_filter():
+    t = client.post("/tasks", json={"title": "직접 완료"}).json()
+    client.patch(f"/tasks/{t['id']}/status?status=done")
+    tpl = client.post("/templates", json={"title": "반복 업무", "default_priority": 3}).json()
+    tr = client.post(f"/templates/{tpl['id']}/create-task").json()
+    client.patch(f"/tasks/{tr['id']}/status?status=done")
+
+    r_all = client.get("/tasks?filter=done")
+    assert len(r_all.json()) == 2
+
+    r_direct = client.get("/tasks?filter=done&source=직접")
+    assert len(r_direct.json()) == 1
+    assert r_direct.json()[0]["task_source"] == "직접"
+
+    r_recurring = client.get("/tasks?filter=done&source=반복")
+    assert len(r_recurring.json()) == 1
+    assert r_recurring.json()[0]["task_source"] == "반복"
+
+
+# --- Clinic name (category as clinic prefix) ---
+def test_task_out_includes_category_name():
+    cat = client.post("/categories", json={"name": "서울바른치과"}).json()
+    t = client.post("/tasks", json={"title": "홈페이지 요청 처리", "category_id": cat["id"]}).json()
+    assert t["category_name"] == "서울바른치과"

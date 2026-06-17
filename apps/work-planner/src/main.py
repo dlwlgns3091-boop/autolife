@@ -2,10 +2,11 @@ from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from .database import engine, Base
+from .database import engine, Base, run_migrations
 from .routers import categories, tasks, templates
 
 Base.metadata.create_all(bind=engine)
+run_migrations()
 
 app = FastAPI(title="Work Planner", description="업무 계획 관리 앱", version="1.0.0")
 
