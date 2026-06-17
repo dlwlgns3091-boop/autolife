@@ -16,6 +16,23 @@ def _query_sorted(db: Session):
     )
 
 
+@router.get("/top", response_model=list[TodoOut])
+def list_top_todos(
+    request: Request,
+    count: int = 3,
+    db: Session = Depends(get_db),
+):
+    require_auth(request)
+    count = max(1, min(count, 5))
+    return (
+        db.query(Todo)
+        .filter(Todo.status != "done")
+        .order_by(Todo.priority.desc(), Todo.due_date.asc().nulls_last(), Todo.created_at.desc())
+        .limit(count)
+        .all()
+    )
+
+
 @router.get("", response_model=list[TodoOut])
 def list_todos(
     request: Request,

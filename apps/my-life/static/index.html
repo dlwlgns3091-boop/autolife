@@ -118,6 +118,16 @@
   .bulk-preview td { padding: .3rem .5rem; border-bottom: 1px solid var(--border); word-break: break-word; }
   .bulk-preview .err-row td { color: var(--danger); background: #fff3f3; }
   .bulk-count { font-size: .82rem; color: var(--sub); margin-bottom: .4rem; }
+
+  /* ── Now Todo ── */
+  .now-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: .5rem; }
+  .count-selector { display: flex; gap: .3rem; }
+  .count-btn { padding: .2rem .55rem; border-radius: 6px; border: 1px solid var(--border); background: var(--bg); font-size: .8rem; cursor: pointer; color: var(--sub); }
+  .count-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .now-todo-item { display: flex; align-items: center; gap: .6rem; padding: .45rem 0; border-bottom: 1px solid var(--border); }
+  .now-todo-item:last-child { border-bottom: none; }
+  .now-todo-title { flex: 1; font-weight: 500; word-break: break-word; font-size: .92rem; }
+  .now-todo-date { font-size: .75rem; white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -147,6 +157,21 @@
 
   <!-- ── Todo Tab ── -->
   <div id="tab-todo" class="section">
+
+    <!-- 지금 할 일 -->
+    <div class="card" id="now-todo-section" style="margin-bottom:.75rem">
+      <div class="now-header">
+        <span class="section-title" style="margin-bottom:0">지금 할 일</span>
+        <div class="count-selector">
+          <button class="count-btn" data-count="1" onclick="setTopCount(1)">1</button>
+          <button class="count-btn" data-count="3" onclick="setTopCount(3)">3</button>
+          <button class="count-btn" data-count="5" onclick="setTopCount(5)">5</button>
+        </div>
+      </div>
+      <div id="now-todo-list"></div>
+      <div class="empty-msg" id="now-todo-empty" style="display:none;padding:.75rem 0">미완료 할일이 없습니다</div>
+    </div>
+
     <div class="filter-bar">
       <button class="filter-btn active" data-filter="all" onclick="setTodoFilter('all')">전체</button>
       <button class="filter-btn" data-filter="today" onclick="setTodoFilter('today')">오늘</button>
@@ -230,6 +255,7 @@
 const $ = id => document.getElementById(id);
 let currentTab = 'todo';
 let todoFilter = 'all';
+let topCount = parseInt(localStorage.getItem('topTodoCount') || '3');
 let budgetYear = new Date().getFullYear();
 let budgetMonth = new Date().getMonth() + 1;
 let modalMode = null; // 'add-todo' | 'edit-todo' | 'add-entry' | 'edit-entry'
@@ -264,6 +290,7 @@ function showApp() {
   $('auth-screen').style.display = 'none';
   $('app-screen').style.display = 'block';
   $('fab').style.display = 'flex';
+  initTopCountButtons();
   loadTodos();
   loadCategories();
   loadBudget();
@@ -282,6 +309,42 @@ function setTodoFilter(f) {
   todoFilter = f;
   document.querySelectorAll('.filter-btn').forEach(b => b.classList.toggle('active', b.dataset.filter === f));
   loadTodos();
+}
+
+function initTopCountButtons() {
+  document.querySelectorAll('.count-btn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.count) === topCount)
+  );
+}
+
+function setTopCount(n) {
+  topCount = n;
+  localStorage.setItem('topTodoCount', n);
+  document.querySelectorAll('.count-btn').forEach(b =>
+    b.classList.toggle('active', parseInt(b.dataset.count) === n)
+  );
+  loadTopTodos();
+}
+
+async function loadTopTodos() {
+  const r = await fetch(`/api/todos/top?count=${topCount}`);
+  if (!r.ok) return;
+  const todos = await r.json();
+  const list = $('now-todo-list');
+  list.innerHTML = '';
+  if (!todos.length) { $('now-todo-empty').style.display = ''; return; }
+  $('now-todo-empty').style.display = 'none';
+  const today = new Date().toISOString().split('T')[0];
+  todos.forEach(t => {
+    const overdue = t.due_date && t.due_date < today;
+    const item = document.createElement('div');
+    item.className = 'now-todo-item';
+    item.innerHTML = `
+      <span class="priority-dot p${t.priority}" style="width:10px;height:10px;flex-shrink:0"></span>
+      <span class="now-todo-title">${esc(t.title)}</span>
+      ${t.due_date ? `<span class="now-todo-date" style="color:${overdue ? 'var(--danger)' : 'var(--sub)'}">${t.due_date}</span>` : ''}`;
+    list.appendChild(item);
+  });
 }
 
 async function loadTodos() {
@@ -316,6 +379,7 @@ async function loadTodos() {
       </div>`;
     list.appendChild(card);
   });
+  loadTopTodos();
 }
 
 async function toggleDone(id, status) {

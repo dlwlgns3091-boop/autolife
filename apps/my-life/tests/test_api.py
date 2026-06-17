@@ -99,6 +99,83 @@ def test_monthly_summary():
     assert s["balance"] == s["total_income"] - s["total_expense"]
 
 
+def test_todo_top_requires_auth():
+    from fastapi.testclient import TestClient as _TC
+    fresh = _TC(app, cookies={})
+    r = fresh.get("/api/todos/top")
+    assert r.status_code == 401
+
+
+def test_todo_top_sort_order():
+    cookies = auth()
+    # Create todos with distinct priorities and due dates
+    r1 = client.post("/api/todos", json={"title": "_top_p5_soon", "priority": 5, "due_date": "2027-01-01"}, cookies=cookies)
+    r2 = client.post("/api/todos", json={"title": "_top_p5_far", "priority": 5, "due_date": "2027-12-31"}, cookies=cookies)
+    r3 = client.post("/api/todos", json={"title": "_top_p3", "priority": 3, "due_date": "2027-06-01"}, cookies=cookies)
+    id1, id2, id3 = r1.json()["id"], r2.json()["id"], r3.json()["id"]
+
+    r = client.get("/api/todos/top?count=5", cookies=cookies)
+    assert r.status_code == 200
+    tops = r.json()
+    ids = [t["id"] for t in tops]
+
+    # All three test todos should appear
+    assert id1 in ids and id2 in ids and id3 in ids
+
+    # Priority 5 items must come before priority 3 item
+    pos1, pos2, pos3 = ids.index(id1), ids.index(id2), ids.index(id3)
+    assert pos1 < pos3 and pos2 < pos3
+
+    # Among same priority 5: soonest due (2027-01-01) before later (2027-12-31)
+    assert pos1 < pos2
+
+    # cleanup
+    for id_ in (id1, id2, id3):
+        client.delete(f"/api/todos/{id_}", cookies=cookies)
+
+
+def test_todo_top_count_param():
+    cookies = auth()
+    # Create 4 todos
+    ids = []
+    for i in range(4):
+        r = client.post("/api/todos", json={"title": f"_top_count_{i}", "priority": 5}, cookies=cookies)
+        ids.append(r.json()["id"])
+
+    r = client.get("/api/todos/top?count=2", cookies=cookies)
+    assert r.status_code == 200
+    assert len(r.json()) <= 2
+
+    # cleanup
+    for id_ in ids:
+        client.delete(f"/api/todos/{id_}", cookies=cookies)
+
+
+def test_todo_top_fewer_than_count():
+    cookies = auth()
+    # Mark all existing todos as done to isolate this test
+    existing = client.get("/api/todos?filter=all", cookies=cookies).json()
+    for t in existing:
+        client.put(f"/api/todos/{t['id']}", json={"status": "done"}, cookies=cookies)
+
+    r1 = client.post("/api/todos", json={"title": "_few_1", "priority": 5}, cookies=cookies)
+    r2 = client.post("/api/todos", json={"title": "_few_2", "priority": 3}, cookies=cookies)
+    id1, id2 = r1.json()["id"], r2.json()["id"]
+
+    r = client.get("/api/todos/top?count=5", cookies=cookies)
+    assert r.status_code == 200
+    tops = r.json()
+    top_ids = [t["id"] for t in tops]
+    assert id1 in top_ids and id2 in top_ids
+    assert len(tops) == 2  # only 2 pending exist
+
+    # cleanup — restore done todos to pending and delete test items
+    for t in existing:
+        client.put(f"/api/todos/{t['id']}", json={"status": t["status"]}, cookies=cookies)
+    for id_ in (id1, id2):
+        client.delete(f"/api/todos/{id_}", cookies=cookies)
+
+
 def test_todo_bulk_create():
     cookies = auth()
     items = [
