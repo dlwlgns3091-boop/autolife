@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Request, HTTPException
 from sqlalchemy.orm import Session
 from ..database import get_db
 from ..models import Todo
-from ..schemas import TodoCreate, TodoUpdate, TodoOut
+from ..schemas import TodoCreate, TodoUpdate, TodoOut, TodoBulkCreate
 from ..auth import require_auth
 
 router = APIRouter(prefix="/api/todos", tags=["todos"])
@@ -69,3 +69,14 @@ def delete_todo(request: Request, todo_id: int, db: Session = Depends(get_db)):
         raise HTTPException(404, "Not found")
     db.delete(todo)
     db.commit()
+
+
+@router.post("/bulk", status_code=201)
+def bulk_create_todos(request: Request, body: TodoBulkCreate, db: Session = Depends(get_db)):
+    require_auth(request)
+    if not body.items:
+        raise HTTPException(400, "항목이 없습니다")
+    for item in body.items:
+        db.add(Todo(**item.model_dump()))
+    db.commit()
+    return {"created": len(body.items)}

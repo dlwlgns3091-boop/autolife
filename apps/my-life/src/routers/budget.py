@@ -7,6 +7,7 @@ from ..models import BudgetEntry, BudgetCategory
 from ..schemas import (
     BudgetEntryCreate, BudgetEntryUpdate, BudgetEntryOut,
     CategoryCreate, CategoryOut, MonthlySummary,
+    BudgetBulkCreate,
 )
 from ..auth import require_auth
 
@@ -94,6 +95,33 @@ def delete_entry(request: Request, entry_id: int, db: Session = Depends(get_db))
         raise HTTPException(404, "Not found")
     db.delete(entry)
     db.commit()
+
+
+# ── Bulk Create ───────────────────────────────────────────────────────────────
+@router.post("/bulk", status_code=201)
+def bulk_create_entries(request: Request, body: BudgetBulkCreate, db: Session = Depends(get_db)):
+    require_auth(request)
+    if not body.items:
+        raise HTTPException(400, "항목이 없습니다")
+    for item in body.items:
+        category_id = None
+        cat_name = (item.category_name or "").strip()
+        if cat_name and cat_name != "미분류":
+            cat = db.query(BudgetCategory).filter(BudgetCategory.name == cat_name).first()
+            if not cat:
+                cat = BudgetCategory(name=cat_name)
+                db.add(cat)
+                db.flush()
+            category_id = cat.id
+        db.add(BudgetEntry(
+            date=item.date,
+            amount=item.amount,
+            category_id=category_id,
+            entry_type=item.entry_type,
+            memo=item.memo,
+        ))
+    db.commit()
+    return {"created": len(body.items)}
 
 
 # ── Monthly Summary ───────────────────────────────────────────────────────────
