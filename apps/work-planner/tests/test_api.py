@@ -175,4 +175,23 @@ def test_top_task():
     client.post("/tasks", json={"title": "높음", "priority": 5})
     r = client.get("/tasks/top")
     assert r.status_code == 200
-    assert r.json()["priority"] == 5
+    items = r.json()
+    assert isinstance(items, list)
+    assert items[0]["priority"] == 5
+
+
+def test_top_task_limit():
+    for i in range(5):
+        client.post("/tasks", json={"title": f"업무{i}", "priority": i + 1})
+    r1 = client.get("/tasks/top?limit=1")
+    assert len(r1.json()) == 1
+    r3 = client.get("/tasks/top?limit=3")
+    assert len(r3.json()) == 3
+    r5 = client.get("/tasks/top?limit=5")
+    assert len(r5.json()) == 5
+
+
+def test_top_task_empty():
+    r = client.get("/tasks/top")
+    assert r.status_code == 200
+    assert r.json() == []

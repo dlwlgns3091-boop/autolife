@@ -46,9 +46,21 @@ a { color: var(--primary); }
 
 /* Top task */
 .top-task { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; border-radius: var(--radius); padding: 16px; margin-bottom: 14px; }
-.top-task-label { font-size: 11px; opacity: .8; text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
+.top-task-label { font-size: 11px; opacity: .8; text-transform: uppercase; letter-spacing: .05em; }
 .top-task-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
 .top-task-meta { font-size: 12px; opacity: .85; }
+.top-task-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.top-count-btns { display: flex; gap: 4px; }
+.top-count-btn { padding: 3px 9px; background: rgba(255,255,255,.15); border: 1px solid rgba(255,255,255,.3); color: rgba(255,255,255,.9); border-radius: 20px; font-size: 11px; cursor: pointer; transition: all .15s; }
+.top-count-btn.active { background: rgba(255,255,255,.35); font-weight: 700; border-color: rgba(255,255,255,.6); }
+.top-task-item { padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,.2); display: flex; align-items: flex-start; gap: 8px; }
+.top-task-item:last-child { border-bottom: none; padding-bottom: 0; }
+.top-task-item:first-child { padding-top: 0; }
+.top-task-rank { font-size: 10px; opacity: .65; min-width: 26px; padding-top: 3px; }
+.top-task-body { flex: 1; }
+.top-task-item-title { font-size: 15px; font-weight: 600; }
+.top-task-item-meta { font-size: 11px; opacity: .85; margin-top: 2px; }
+.top-task-empty { font-size: 13px; opacity: .75; }
 
 /* Templates */
 .templates-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
@@ -334,6 +346,7 @@ const API = '';
 let currentTab = 'dashboard';
 let currentFilter = localStorage.getItem('wp_filter') || '';
 let currentCatFilter = localStorage.getItem('wp_cat_filter') ? parseInt(localStorage.getItem('wp_cat_filter')) : null;
+let topTaskCount = parseInt(localStorage.getItem('wp_top_count') || '3');
 let editingTaskId = null;
 let editingCatId = null;
 let editingTplId = null;
@@ -375,9 +388,9 @@ function showTab(tab) {
 
 // ---- DASHBOARD ----
 async function loadDashboard() {
-  const [summary, top, tpls, cats] = await Promise.all([
+  const [summary, topTasks, tpls, cats] = await Promise.all([
     api('GET','/tasks/summary'),
-    api('GET','/tasks/top'),
+    api('GET',`/tasks/top?limit=${topTaskCount}`),
     api('GET','/templates'),
     api('GET','/categories'),
   ]);
@@ -390,19 +403,36 @@ async function loadDashboard() {
     <div class="stat in-progress"><div class="stat-num">${summary.in_progress_count}</div><div class="stat-label">진행중</div></div>
   `;
 
+  const countBtnsHtml = [1,3,5].map(n =>
+    `<button class="top-count-btn${topTaskCount===n?' active':''}" onclick="setTopTaskCount(${n})">${n}개</button>`
+  ).join('');
+
   const topEl = document.getElementById('top-task-section');
-  if (top) {
-    const dl = top.deadline ? ` · 마감 ${top.deadline.slice(5)}` : '';
-    const cat = top.category_name ? ` · ${top.category_name}` : '';
-    topEl.innerHTML = `
-      <div class="top-task">
-        <div class="top-task-label">⚡ 지금 할 일</div>
-        <div class="top-task-title">${esc(top.title)}</div>
-        <div class="top-task-meta">우선순위 ${top.priority}${cat}${dl}</div>
+  let itemsHtml;
+  if (topTasks.length > 0) {
+    itemsHtml = topTasks.map((t, i) => {
+      const dl = t.deadline ? ` · 마감 ${t.deadline.slice(5)}` : '';
+      const cat = t.category_name ? ` · ${t.category_name}` : '';
+      return `<div class="top-task-item">
+        <div class="top-task-rank">${i+1}순위</div>
+        <div class="top-task-body">
+          <div class="top-task-item-title">${esc(t.title)}</div>
+          <div class="top-task-item-meta">우선순위 ${t.priority}${cat}${dl}</div>
+        </div>
       </div>`;
+    }).join('');
   } else {
-    topEl.innerHTML = '';
+    itemsHtml = '<div class="top-task-empty">미완료 업무가 없습니다 🎉</div>';
   }
+
+  topEl.innerHTML = `
+    <div class="top-task">
+      <div class="top-task-header">
+        <div class="top-task-label">⚡ 지금 할 일</div>
+        <div class="top-count-btns">${countBtnsHtml}</div>
+      </div>
+      ${itemsHtml}
+    </div>`;
 
   const row = document.getElementById('templates-row');
   if (tpls.length === 0) {
@@ -412,6 +442,12 @@ async function loadDashboard() {
       `<button class="tpl-btn" onclick="createFromTemplate(${t.id},'${esc(t.title)}')">${esc(t.title)}</button>`
     ).join('');
   }
+}
+
+function setTopTaskCount(n) {
+  topTaskCount = n;
+  localStorage.setItem('wp_top_count', n);
+  loadDashboard();
 }
 
 async function createFromTemplate(id, title) {

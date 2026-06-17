@@ -57,12 +57,11 @@ def get_summary(db: Session = Depends(get_db)):
     )
 
 
-@router.get("/top", response_model=Optional[TaskOut])
-def get_top_task(db: Session = Depends(get_db)):
+@router.get("/top", response_model=list[TaskOut])
+def get_top_tasks(limit: int = Query(3, ge=1, le=10), db: Session = Depends(get_db)):
     q = db.query(Task).filter(Task.status != "done")
     q = _sorted_incomplete(q)
-    t = q.first()
-    return _task_out(t) if t else None
+    return [_task_out(t) for t in q.limit(limit).all()]
 
 
 @router.get("", response_model=list[TaskOut])
