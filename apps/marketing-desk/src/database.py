@@ -17,7 +17,5 @@ def get_db():
 
 
 def run_migrations():
-    """Add new columns to existing tables using ALTER TABLE (data-safe, no DROP)."""
-    with engine.connect() as conn:
-        # Future migrations go here following ALTER TABLE pattern
-        pass
+    """Add new columns using ALTER TABLE only (no DROP)."""
+    pass
