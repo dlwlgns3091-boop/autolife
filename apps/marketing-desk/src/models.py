@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from sqlalchemy import Boolean, Column, Integer, String, Date, DateTime, Text
+from sqlalchemy import Column, Integer, String, Date, DateTime, Text, Boolean
 from .database import Base
 
 
@@ -12,33 +12,30 @@ class Step0Item(Base):
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(200), nullable=False)
     memo = Column(Text, nullable=True)
-    checked = Column(Boolean, default=False, nullable=False)
-    sort_order = Column(Integer, default=0)
+    is_checked = Column(Boolean, default=False)
+    order = Column(Integer, default=0)
     created_at = Column(DateTime, default=utcnow)
-    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
 
-class WeeklyItem(Base):
-    __tablename__ = "weekly_items"
+class WeeklyRoutine(Base):
+    __tablename__ = "weekly_routines"
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(200), nullable=False)
     memo = Column(Text, nullable=True)
-    checked = Column(Boolean, default=False, nullable=False)
-    sort_order = Column(Integer, default=0)
+    is_checked = Column(Boolean, default=False)
+    order = Column(Integer, default=0)
     created_at = Column(DateTime, default=utcnow)
-    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
 
-class MonthlyItem(Base):
-    __tablename__ = "monthly_items"
+class MonthlyRoutine(Base):
+    __tablename__ = "monthly_routines"
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String(200), nullable=False)
     memo = Column(Text, nullable=True)
-    checked = Column(Boolean, default=False, nullable=False)
-    period = Column(String(10), nullable=False)  # 월초 / 월중 / 월말
-    sort_order = Column(Integer, default=0)
+    group = Column(String(10), nullable=False)  # early / mid / late
+    is_checked = Column(Boolean, default=False)
+    order = Column(Integer, default=0)
     created_at = Column(DateTime, default=utcnow)
-    updated_at = Column(DateTime, default=utcnow, onupdate=utcnow)
 
 
 class ImmediateTask(Base):
