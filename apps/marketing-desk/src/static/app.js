@@ -253,7 +253,7 @@ function copyAI(){
     if(!tasks.length){alert('할일이 없습니다');return;}
     var lines=tasks.map(function(t){
       return '- [P'+t.priority+'] '+t.title
-        +(t.deadline?' (마감:'+t.deadline+')')
+        +(t.deadline?' (마감:'+t.deadline+')':'')
         +(t.status!=='pending'?' ['+statusLabel(t.status)+']':'')
         +(t.memo?' // '+t.memo:'');
     });
@@ -266,7 +266,7 @@ function askAI(){
   api('/immediate').then(function(tasks){
     var lines=tasks.map(function(t){
       return '- [P'+t.priority+'] '+t.title
-        +(t.deadline?' (마감:'+t.deadline+')')
+        +(t.deadline?' (마감:'+t.deadline+')':'')
         +(t.status!=='pending'?' ['+statusLabel(t.status)+']':'')
         +(t.memo?' // '+t.memo:'');
     });
