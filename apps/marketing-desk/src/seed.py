@@ -1,60 +1,64 @@
-from datetime import date
 from sqlalchemy.orm import Session
-from .models import Step0Item, WeeklyRoutine, MonthlyRoutine, ImmediateTask
+from .models import (
+    DailyTask, MonthStartTask, MonthStartHospitalCafe, MonthStartHospitalReview,
+    MonthEndTask, WeeklyTask,
+)
 
 
 def run_seed(db: Session):
-    if db.query(Step0Item).count() > 0:
+    if db.query(DailyTask).count() > 0:
         return
 
-    step0_titles = [
-        "홈피 커넥터 일괄 업데이트 (구버전→v2.15)",
-        "제니스라인 커넥터 빈 응답 별도 점검",
-        "플레이스 순위체크 ON (병원별 메인키워드 저장)",
-        "GEO 엔티티 배포 (미배포 병원 JSON-LD)",
-        "GEO 페르소나 활성화",
-        "웹문서 점검 (참여 ON·게시판 확인)",
+    daily_titles = [
+        "온라인 모니터링 (홈페이지 이상·오류 일괄 점검)",
+        "애드몽 콘솔 대기 건 확인·처리",
+        "홈페이지 요청 처리(팝업·공지·게시판·오류)",
+        "카페 발행글 삭제 점검(발행 링크 직접 접속)",
+        "삭제된 글 새 원고 작성해 재발행 요청",
     ]
-    for i, title in enumerate(step0_titles):
-        db.add(Step0Item(title=title, order=i))
+    for i, title in enumerate(daily_titles):
+        db.add(DailyTask(title=title, order=i))
+
+    ms_titles = [
+        "카페 침투 원고 작성 (6곳 × 약 10건)",
+        "후기(구글리뷰) 원고 작성 (21곳 × 약 5개)",
+        "외주에 일괄 실행 요청",
+        "요청 목록 기록",
+    ]
+    for i, title in enumerate(ms_titles):
+        db.add(MonthStartTask(title=title, order=i))
+
+    cafe_hospitals = [
+        "새오름피부과", "배곧샤인", "연세바로",
+        "레메디한방병원", "서울성장하는", "송병재",
+    ]
+    for i, name in enumerate(cafe_hospitals):
+        db.add(MonthStartHospitalCafe(name=name, order=i))
+
+    review_hospitals = [
+        "배곧샤인", "연세바로", "바른이바른얼굴", "타임", "연세그랑스마일",
+        "제니스라인", "아프로", "서울바른(청주)", "서울바른(김포)", "서울류준하",
+        "좋아서하는", "연세위드", "활짝웃는", "연세바른", "바른내일",
+        "연세메이트", "레메디한방병원", "서울성장하는", "탁월한", "송병재", "바르다",
+    ]
+    for i, name in enumerate(review_hospitals):
+        db.add(MonthStartHospitalReview(name=name, order=i))
+
+    me_titles = [
+        "병원별 진료일정 수령 확인(안 온 곳 리마인드)",
+        "피그마로 팝업 이미지 제작",
+        "콘솔에서 병원별 팝업/공지 등록(하나씩)",
+        "게시 확인",
+    ]
+    for i, title in enumerate(me_titles):
+        db.add(MonthEndTask(title=title, order=i))
 
     weekly_titles = [
-        "웹문서 자동발행 결과 확인, 실패 건 재시도",
-        "플레이스 신규 리뷰 답글(부정 우선), 순위 급변 확인",
-        "리뷰 갭 경보 뜬 병원 확인",
-        "홈페이지 연결상태 오류 점검",
+        "카페·후기 발행 현황 점검(요청분 다 올라갔나)",
+        "이번 달 진행상황 vs 할 일 대조",
+        "콘솔 대기·미처리 정리",
     ]
     for i, title in enumerate(weekly_titles):
-        db.add(WeeklyRoutine(title=title, order=i))
-
-    for i, title in enumerate([
-        "GEO 정찰 스캔 실행 (이번 달 4~6곳)",
-        "플레이스 전체 분석 실행",
-        "이번 달 병원별 완료 기준 확정",
-    ]):
-        db.add(MonthlyRoutine(title=title, group="early", order=i))
-
-    for i, title in enumerate([
-        "GEO 미노출 질문 콘텐츠 발행 / 홈피 진단 개발자 전달",
-        "리뷰 갭 보강",
-        "플레이스 수정필요 섹션 처리",
-    ]):
-        db.add(MonthlyRoutine(title=title, group="mid", order=i))
-
-    for i, title in enumerate([
-        "GEO 증명 리포트 (T0 대비 변화)",
-        "플레이스 순위 변화 정리",
-        "못 끝낸 건 이월 목록 기록",
-    ]):
-        db.add(MonthlyRoutine(title=title, group="late", order=i))
-
-    for item in [
-        {"title": "제니스라인 커넥터 빈 응답 점검", "priority": 5},
-        {"title": "리뷰 갭 경보 2곳 (아프로 9%, 바른내일 45%)", "priority": 4},
-        {"title": "구버전 커넥터 일괄 업데이트 (365서울차오름 외)", "priority": 4},
-        {"title": "GEO 엔티티 미배포 (서울그랜드, 바른이디자인, 바른이바른얼굴, 시그니처)", "priority": 3},
-        {"title": "GEO 정찰 대상 4~6곳 선정", "priority": 3},
-    ]:
-        db.add(ImmediateTask(title=item["title"], priority=item["priority"], status="pending"))
+        db.add(WeeklyTask(title=title, order=i))
 
     db.commit()

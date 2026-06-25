@@ -1,99 +1,117 @@
 from datetime import date
-from typing import Optional
+from typing import Optional, List
 from pydantic import BaseModel
 
 
-class Step0ItemCreate(BaseModel):
+# ── Generic checklist item ──────────────────────────────────────────────────
+
+class ChecklistItemCreate(BaseModel):
     title: str
-    memo: Optional[str] = None
 
 
-class Step0ItemUpdate(BaseModel):
+class ChecklistItemUpdate(BaseModel):
     title: Optional[str] = None
-    memo: Optional[str] = None
     is_checked: Optional[bool] = None
     order: Optional[int] = None
 
 
-class Step0ItemOut(BaseModel):
+class ChecklistItemOut(BaseModel):
     id: int
     title: str
-    memo: Optional[str]
     is_checked: bool
     order: int
     model_config = {"from_attributes": True}
 
 
-class WeeklyRoutineCreate(BaseModel):
-    title: str
-    memo: Optional[str] = None
+# ── Hospital ────────────────────────────────────────────────────────────────
 
-
-class WeeklyRoutineUpdate(BaseModel):
-    title: Optional[str] = None
-    memo: Optional[str] = None
-    is_checked: Optional[bool] = None
-    order: Optional[int] = None
-
-
-class WeeklyRoutineOut(BaseModel):
+class HospitalOut(BaseModel):
     id: int
-    title: str
-    memo: Optional[str]
+    name: str
     is_checked: bool
     order: int
     model_config = {"from_attributes": True}
 
 
-class MonthlyRoutineCreate(BaseModel):
+# ── Always task ─────────────────────────────────────────────────────────────
+
+class AlwaysTaskCreate(BaseModel):
     title: str
-    memo: Optional[str] = None
-    group: str
-
-
-class MonthlyRoutineUpdate(BaseModel):
-    title: Optional[str] = None
-    memo: Optional[str] = None
-    is_checked: Optional[bool] = None
-    group: Optional[str] = None
-    order: Optional[int] = None
-
-
-class MonthlyRoutineOut(BaseModel):
-    id: int
-    title: str
-    memo: Optional[str]
-    group: str
-    is_checked: bool
-    order: int
-    model_config = {"from_attributes": True}
-
-
-class ImmediateTaskCreate(BaseModel):
-    title: str
-    deadline: Optional[date] = None
     priority: int = 3
     status: str = "pending"
     memo: Optional[str] = None
-
-
-class ImmediateTaskUpdate(BaseModel):
-    title: Optional[str] = None
     deadline: Optional[date] = None
+
+
+class AlwaysTaskUpdate(BaseModel):
+    title: Optional[str] = None
     priority: Optional[int] = None
     status: Optional[str] = None
     memo: Optional[str] = None
+    deadline: Optional[date] = None
 
 
-class ImmediateTaskOut(BaseModel):
+class AlwaysTaskOut(BaseModel):
     id: int
     title: str
-    deadline: Optional[date]
     priority: int
     status: str
     memo: Optional[str]
+    deadline: Optional[date]
     model_config = {"from_attributes": True}
 
+
+# ── Calendar event ──────────────────────────────────────────────────────────
+
+class CalendarEventCreate(BaseModel):
+    event_date: date
+    title: str
+    memo: Optional[str] = None
+
+
+class CalendarEventUpdate(BaseModel):
+    title: Optional[str] = None
+    memo: Optional[str] = None
+    event_date: Optional[date] = None
+
+
+class CalendarEventOut(BaseModel):
+    id: int
+    event_date: date
+    title: str
+    memo: Optional[str]
+    model_config = {"from_attributes": True}
+
+
+# ── Dashboard ───────────────────────────────────────────────────────────────
+
+class SectionProgress(BaseModel):
+    total: int
+    checked: int
+
+
+class DashboardTaskItem(BaseModel):
+    id: int
+    type: str
+    title: str
+    is_urgent: bool
+    deadline: Optional[date] = None
+    priority: Optional[int] = None
+    status: Optional[str] = None
+
+
+class DashboardOut(BaseModel):
+    today: str
+    current_period: str
+    daily: SectionProgress
+    month_start: SectionProgress
+    month_end: SectionProgress
+    weekly: SectionProgress
+    always: SectionProgress
+    items: List[DashboardTaskItem]
+
+
+# ── Bulk import (always tasks) ──────────────────────────────────────────────
 
 class BulkImportRequest(BaseModel):
     text: str
@@ -107,30 +125,5 @@ class BulkPreviewLine(BaseModel):
 
 
 class BulkPreviewResponse(BaseModel):
-    preview: list[BulkPreviewLine]
+    preview: List[BulkPreviewLine]
     count: int
-
-
-class DashboardSection(BaseModel):
-    total: int
-    checked: int
-
-
-class DashboardItem(BaseModel):
-    id: int
-    type: str
-    title: str
-    is_urgent: bool
-    group: Optional[str] = None
-    deadline: Optional[date] = None
-    priority: Optional[int] = None
-    status: Optional[str] = None
-
-
-class DashboardOut(BaseModel):
-    items: list[DashboardItem]
-    step0: DashboardSection
-    weekly: DashboardSection
-    monthly: DashboardSection
-    immediate: DashboardSection
-    current_period: str

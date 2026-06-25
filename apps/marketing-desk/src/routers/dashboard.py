@@ -1,74 +1,95 @@
+import calendar as cal_mod
 from datetime import date
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+from typing import List
 from ..database import get_db
-from ..models import Step0Item, WeeklyRoutine, MonthlyRoutine, ImmediateTask
-from ..schemas import DashboardOut, DashboardItem, DashboardSection
+from ..models import DailyTask, MonthStartTask, MonthEndTask, WeeklyTask, AlwaysTask
+from ..schemas import DashboardOut, DashboardTaskItem, SectionProgress
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 
-def _current_period(today: date) -> str:
-    if today.day <= 10:
-        return "early"
-    elif today.day <= 20:
-        return "mid"
-    return "late"
+def _period(day: int, last_day: int) -> str:
+    if 1 <= day <= 5:
+        return "month_start"
+    if day >= 25:
+        return "month_end"
+    return "normal"
+
+
+def _progress(items, status_field: bool = False) -> SectionProgress:
+    total = len(items)
+    if status_field:
+        checked = sum(1 for i in items if getattr(i, "status", "") == "done")
+    else:
+        checked = sum(1 for i in items if getattr(i, "is_checked", False))
+    return SectionProgress(total=total, checked=checked)
 
 
 @router.get("", response_model=DashboardOut)
-def get_dashboard(limit: int = Query(default=5, ge=0), db: Session = Depends(get_db)):
+def get_dashboard(limit: int = Query(5, ge=0), db: Session = Depends(get_db)):
     today = date.today()
-    period = _current_period(today)
+    last_day = cal_mod.monthrange(today.year, today.month)[1]
+    period = _period(today.day, last_day)
 
-    step0_total = db.query(Step0Item).count()
-    step0_checked = db.query(Step0Item).filter(Step0Item.is_checked == True).count()
+    daily_items = db.query(DailyTask).order_by(DailyTask.order, DailyTask.id).all()
+    ms_tasks = db.query(MonthStartTask).order_by(MonthStartTask.order, MonthStartTask.id).all()
+    me_tasks = db.query(MonthEndTask).order_by(MonthEndTask.order, MonthEndTask.id).all()
+    weekly_items = db.query(WeeklyTask).order_by(WeeklyTask.order, WeeklyTask.id).all()
+    always_items = db.query(AlwaysTask).order_by(AlwaysTask.priority.desc(), AlwaysTask.id).all()
 
-    weekly_total = db.query(WeeklyRoutine).count()
-    weekly_checked = db.query(WeeklyRoutine).filter(WeeklyRoutine.is_checked == True).count()
+    dashboard_items: List[DashboardTaskItem] = []
 
-    monthly_total = db.query(MonthlyRoutine).count()
-    monthly_checked = db.query(MonthlyRoutine).filter(MonthlyRoutine.is_checked == True).count()
+    for it in daily_items:
+        if not it.is_checked:
+            dashboard_items.append(DashboardTaskItem(
+                id=it.id, type="daily", title=it.title, is_urgent=False,
+            ))
 
-    imm_done = db.query(ImmediateTask).filter(ImmediateTask.status == "done").count()
-    imm_pending = db.query(ImmediateTask).filter(ImmediateTask.status != "done").count()
-    imm_all = imm_done + imm_pending
+    if period == "month_start":
+        for it in ms_tasks:
+            if not it.is_checked:
+                dashboard_items.append(DashboardTaskItem(
+                    id=it.id, type="month_start", title=it.title, is_urgent=True,
+                ))
 
-    items: list[DashboardItem] = []
+    if period == "month_end":
+        for it in me_tasks:
+            if not it.is_checked:
+                dashboard_items.append(DashboardTaskItem(
+                    id=it.id, type="month_end", title=it.title, is_urgent=True,
+                ))
 
-    for t in db.query(ImmediateTask).filter(
-        ImmediateTask.status != "done"
-    ).order_by(ImmediateTask.priority.desc(), ImmediateTask.deadline.asc()).all():
-        is_urgent = t.deadline is not None and t.deadline <= today
-        items.append(DashboardItem(
-            id=t.id, type="immediate", title=t.title, is_urgent=is_urgent,
-            deadline=t.deadline, priority=t.priority, status=t.status,
-        ))
+    for it in weekly_items:
+        if not it.is_checked:
+            dashboard_items.append(DashboardTaskItem(
+                id=it.id, type="weekly", title=it.title, is_urgent=False,
+            ))
 
-    for r in db.query(WeeklyRoutine).filter(
-        WeeklyRoutine.is_checked == False
-    ).order_by(WeeklyRoutine.order, WeeklyRoutine.id).all():
-        items.append(DashboardItem(id=r.id, type="weekly", title=r.title, is_urgent=False))
+    for it in always_items:
+        if it.status != "done":
+            is_urgent = bool(
+                it.priority >= 4
+                or (it.deadline is not None and (it.deadline - today).days <= 3)
+            )
+            dashboard_items.append(DashboardTaskItem(
+                id=it.id, type="always", title=it.title, is_urgent=is_urgent,
+                deadline=it.deadline, priority=it.priority, status=it.status,
+            ))
 
-    for r in db.query(MonthlyRoutine).filter(
-        MonthlyRoutine.group == period,
-        MonthlyRoutine.is_checked == False,
-    ).order_by(MonthlyRoutine.order, MonthlyRoutine.id).all():
-        items.append(DashboardItem(id=r.id, type="monthly", title=r.title, is_urgent=False, group=period))
-
-    for r in db.query(Step0Item).filter(
-        Step0Item.is_checked == False
-    ).order_by(Step0Item.order, Step0Item.id).all():
-        items.append(DashboardItem(id=r.id, type="step0", title=r.title, is_urgent=False))
+    always_progress = _progress(always_items, status_field=True)
 
     if limit > 0:
-        items = items[:limit]
+        dashboard_items = dashboard_items[:limit]
 
     return DashboardOut(
-        items=items,
-        step0=DashboardSection(total=step0_total, checked=step0_checked),
-        weekly=DashboardSection(total=weekly_total, checked=weekly_checked),
-        monthly=DashboardSection(total=monthly_total, checked=monthly_checked),
-        immediate=DashboardSection(total=imm_all, checked=imm_done),
+        today=today.isoformat(),
         current_period=period,
+        daily=_progress(daily_items),
+        month_start=_progress(ms_tasks),
+        month_end=_progress(me_tasks),
+        weekly=_progress(weekly_items),
+        always=always_progress,
+        items=dashboard_items,
     )
